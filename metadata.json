@@ -1,0 +1,6 @@
+{
+  "name": "Guru Offline - SMK NU Ungaran",
+  "description": "Sistem Informasi Akademik & Pengajaran Guru Offline SMK NU Ungaran berbasis IndexedDB.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
