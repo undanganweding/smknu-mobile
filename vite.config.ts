@@ -50,7 +50,7 @@ export default ({ mode }: { mode: string }) => {
       }
     },
     build: {
-      target: 'es2015',
+      target: 'es2020',
       outDir: 'dist',
       chunkSizeWarningLimit: 2000,
       minify: 'terser',
@@ -116,10 +116,8 @@ export default ({ mode }: { mode: string }) => {
         'echarts/components',
         'echarts/renderers',
         'xlsx',
-        'xgplayer',
         'crypto-js',
         'file-saver',
-        'vue-img-cutter',
         'element-plus/es',
         'element-plus/es/components/*/style/css',
         'element-plus/es/components/*/style/index'

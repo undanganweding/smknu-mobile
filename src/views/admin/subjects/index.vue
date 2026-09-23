@@ -181,7 +181,7 @@
   import type { FormInstance, FormRules } from 'element-plus'
 
   const subjects = ref<SubjectEntity[]>([])
-  const loading = ref(false)
+  const loading = ref(true)
   const saving = ref(false)
   const searchQuery = ref('')
   const filterCategory = ref<string>('')

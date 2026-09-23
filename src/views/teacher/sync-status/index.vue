@@ -290,7 +290,7 @@
 
   defineOptions({ name: 'TeacherSyncStatus' })
 
-  const loading = ref(false)
+  const loading = ref(true)
   const isSyncing = ref(false)
   const drawerVisible = ref(false)
   const selectedItem = ref<SyncQueueEntity | null>(null)

@@ -366,11 +366,16 @@
           </div>
         </div>
 
-        <!-- Empty Roster State -->
-        <div v-if="loadingSession" class="py-12 text-center text-gray-400 space-y-2">
-          <i class="ri-loader-4-line text-3xl animate-spin text-emerald-600"></i>
-          <div>Memuat data presensi dan daftar siswa...</div>
-        </div>
+        <!-- Skeleton Loader during Session Load -->
+        <ArtSkeleton
+          v-if="loadingSession"
+          type="table"
+          :rows="8"
+          :columns="6"
+          :column-widths="['50px', '120px', '260px', '70px', '320px', '180px']"
+          :avatar-columns="[3]"
+          :badge-columns="[4]"
+        />
 
         <div
           v-else-if="!sessionData || sessionData.records.length === 0"

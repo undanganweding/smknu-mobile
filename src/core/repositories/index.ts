@@ -4,26 +4,28 @@
  */
 
 import {
-  IndexedDbUserRepository,
-  IndexedDbTeacherRepository,
-  IndexedDbTeacherAssignmentRepository,
-  IndexedDbAcademicYearRepository,
-  IndexedDbMajorRepository,
-  IndexedDbClassRepository,
-  IndexedDbSubjectRepository,
-  IndexedDbRoomRepository,
-  IndexedDbStudentRepository,
-  IndexedDbScheduleRepository,
-  IndexedDbAttendanceRepository,
-  IndexedDbJournalRepository,
-  IndexedDbAssessmentRepository,
-  IndexedDbDisciplineRepository,
-  IndexedDbAnnouncementRepository,
-  IndexedDbSchoolIdentityRepository,
-  IndexedDbSyncQueueRepository,
-  IndexedDbImportHistoryRepository,
-  IndexedDbAuditLogRepository
-} from './indexeddb/repositories'
+  HybridUserRepository,
+  HybridTeacherRepository,
+  HybridTeacherAssignmentRepository,
+  HybridAcademicYearRepository,
+  HybridMajorRepository,
+  HybridClassRepository,
+  HybridSubjectRepository,
+  HybridRoomRepository,
+  HybridStudentRepository,
+  HybridScheduleRepository,
+  HybridAttendanceRepository,
+  HybridJournalRepository,
+  HybridAssessmentRepository,
+  HybridDisciplineRepository,
+  HybridAnnouncementRepository,
+  HybridSchoolIdentityRepository,
+  HybridSyncQueueRepository,
+  HybridImportHistoryRepository,
+  HybridAuditLogRepository,
+  HybridAcademicPeriodRepository,
+  HybridSchoolAgendaRepository
+} from './hybrid/repositories'
 
 import type {
   IUserRepository,
@@ -44,7 +46,9 @@ import type {
   ISchoolIdentityRepository,
   ISyncQueueRepository,
   IImportHistoryRepository,
-  IAuditLogRepository
+  IAuditLogRepository,
+  IAcademicPeriodRepository,
+  ISchoolAgendaRepository
 } from './interfaces/IRepository'
 
 export class RepositoryContainer {
@@ -67,27 +71,31 @@ export class RepositoryContainer {
   public readonly syncQueue: ISyncQueueRepository
   public readonly importHistory: IImportHistoryRepository
   public readonly auditLogs: IAuditLogRepository
+  public readonly academicPeriods: IAcademicPeriodRepository
+  public readonly schoolAgendas: ISchoolAgendaRepository
 
   constructor() {
-    this.users = new IndexedDbUserRepository()
-    this.teachers = new IndexedDbTeacherRepository()
-    this.teacherAssignments = new IndexedDbTeacherAssignmentRepository()
-    this.academicYears = new IndexedDbAcademicYearRepository()
-    this.majors = new IndexedDbMajorRepository()
-    this.classes = new IndexedDbClassRepository()
-    this.subjects = new IndexedDbSubjectRepository()
-    this.rooms = new IndexedDbRoomRepository()
-    this.students = new IndexedDbStudentRepository()
-    this.schedules = new IndexedDbScheduleRepository()
-    this.attendances = new IndexedDbAttendanceRepository()
-    this.journals = new IndexedDbJournalRepository()
-    this.assessments = new IndexedDbAssessmentRepository()
-    this.disciplineNotes = new IndexedDbDisciplineRepository()
-    this.announcements = new IndexedDbAnnouncementRepository()
-    this.schoolIdentity = new IndexedDbSchoolIdentityRepository()
-    this.syncQueue = new IndexedDbSyncQueueRepository()
-    this.importHistory = new IndexedDbImportHistoryRepository()
-    this.auditLogs = new IndexedDbAuditLogRepository()
+    this.users = new HybridUserRepository()
+    this.teachers = new HybridTeacherRepository()
+    this.teacherAssignments = new HybridTeacherAssignmentRepository()
+    this.academicYears = new HybridAcademicYearRepository()
+    this.majors = new HybridMajorRepository()
+    this.classes = new HybridClassRepository()
+    this.subjects = new HybridSubjectRepository()
+    this.rooms = new HybridRoomRepository()
+    this.students = new HybridStudentRepository()
+    this.schedules = new HybridScheduleRepository()
+    this.attendances = new HybridAttendanceRepository()
+    this.journals = new HybridJournalRepository()
+    this.assessments = new HybridAssessmentRepository()
+    this.disciplineNotes = new HybridDisciplineRepository()
+    this.announcements = new HybridAnnouncementRepository()
+    this.schoolIdentity = new HybridSchoolIdentityRepository()
+    this.syncQueue = new HybridSyncQueueRepository()
+    this.importHistory = new HybridImportHistoryRepository()
+    this.auditLogs = new HybridAuditLogRepository()
+    this.academicPeriods = new HybridAcademicPeriodRepository()
+    this.schoolAgendas = new HybridSchoolAgendaRepository()
   }
 }
 

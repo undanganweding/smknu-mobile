@@ -31,6 +31,8 @@
           v-if="isLeftMenu && shouldShowMenuButton"
           icon="ri:menu-2-fill"
           class="ml-3 max-sm:ml-[7px]"
+          aria-label="Buka atau Tutup Menu Navigasi"
+          title="Buka/Tutup Menu"
           @click="visibleMenu"
         />
 
@@ -40,12 +42,19 @@
           icon="ri:refresh-line"
           class="!ml-3 refresh-btn max-sm:!hidden"
           :style="{ marginLeft: !isLeftMenu ? '10px' : '0' }"
+          aria-label="Muat Ulang Halaman"
+          title="Muat Ulang"
           @click="reload"
         />
 
         <!-- 快速入口 -->
         <ArtFastEnter v-if="shouldShowFastEnter && width >= headerBarFastEnterMinWidth">
-          <ArtIconButton icon="ri:function-line" class="ml-3" />
+          <ArtIconButton
+            icon="ri:function-line"
+            class="ml-3"
+            aria-label="Akses Cepat Fitur"
+            title="Akses Cepat"
+          />
         </ArtFastEnter>
 
         <!-- 面包屑 -->
@@ -61,17 +70,28 @@
       </div>
 
       <div class="flex-c gap-2.5">
+        <!-- Global Sync Status Indicator -->
+        <GlobalSyncIndicator class="mr-1" />
+
         <!-- 搜索 -->
         <div
           v-if="shouldShowGlobalSearch"
-          class="flex-cb w-40 h-9 px-2.5 c-p border border-g-400 rounded-custom-sm max-md:!hidden"
+          role="button"
+          tabindex="0"
+          aria-label="Pencarian Cepat Menu dan Fitur (Ctrl+K)"
+          class="flex-cb w-40 h-9 px-2.5 c-p border border-g-400 rounded-custom-sm max-md:!hidden transition-all duration-150 hover:border-primary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70"
           @click="openSearchDialog"
+          @keydown.enter.prevent="openSearchDialog"
+          @keydown.space.prevent="openSearchDialog"
         >
           <div class="flex-c">
-            <ArtSvgIcon icon="ri:search-line" class="text-sm text-g-500" />
+            <ArtSvgIcon icon="ri:search-line" class="text-sm text-g-500" aria-hidden="true" />
             <span class="ml-1 text-xs font-normal text-g-500">{{ $t('topBar.search.title') }}</span>
           </div>
-          <div class="flex-c h-5 px-1.5 text-g-500/80 border border-g-400 rounded">
+          <div
+            class="flex-c h-5 px-1.5 text-g-500/80 border border-g-400 rounded"
+            aria-hidden="true"
+          >
             <ArtSvgIcon v-if="isWindows" icon="vaadin:ctrl-a" class="text-sm" />
             <ArtSvgIcon v-else icon="ri:command-fill" class="text-xs" />
             <span class="ml-0.5 text-xs">k</span>
@@ -84,6 +104,8 @@
           :icon="isFullscreen ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-fill'"
           :class="[!isFullscreen ? 'full-screen-btn' : 'exit-full-screen-btn', 'ml-3']"
           class="max-md:!hidden"
+          :aria-label="isFullscreen ? 'Keluar Layar Penuh' : 'Mode Layar Penuh'"
+          :title="isFullscreen ? 'Keluar Layar Penuh' : 'Layar Penuh'"
           @click="toggleFullScreen"
         />
 
@@ -93,7 +115,12 @@
           popper-class="langDropDownStyle"
           v-if="shouldShowLanguage"
         >
-          <ArtIconButton icon="ri:translate-2" class="language-btn text-[19px]" />
+          <ArtIconButton
+            icon="ri:translate-2"
+            class="language-btn text-[19px]"
+            aria-label="Ganti Bahasa"
+            title="Ganti Bahasa"
+          />
           <template #dropdown>
             <ElDropdownMenu>
               <div v-for="item in languageOptions" :key="item.value" class="lang-btn-item">
@@ -114,19 +141,14 @@
           v-if="shouldShowNotification"
           icon="ri:notification-2-line"
           class="notice-button relative"
+          aria-label="Pemberitahuan dan Notifikasi"
+          title="Notifikasi"
           @click="visibleNotice"
         >
-          <div class="absolute top-2 right-2 size-1.5 !bg-danger rounded-full"></div>
-        </ArtIconButton>
-
-        <!-- 聊天按钮 -->
-        <ArtIconButton
-          v-if="shouldShowChat"
-          icon="ri:message-3-line"
-          class="chat-button relative"
-          @click="openChat"
-        >
-          <div class="breathing-dot absolute top-2 right-2 size-1.5 !bg-success rounded-full"></div>
+          <div
+            class="absolute top-2 right-2 size-1.5 !bg-danger rounded-full"
+            aria-hidden="true"
+          ></div>
         </ArtIconButton>
 
         <!-- 设置按钮 -->
@@ -134,7 +156,13 @@
           <ElPopover :visible="showSettingGuide" placement="bottom-start" :width="190" :offset="0">
             <template #reference>
               <div class="flex-cc">
-                <ArtIconButton icon="ri:settings-line" class="setting-btn" @click="openSetting" />
+                <ArtIconButton
+                  icon="ri:settings-line"
+                  class="setting-btn"
+                  aria-label="Pengaturan Tata Letak dan Tema"
+                  title="Pengaturan Tampilan"
+                  @click="openSetting"
+                />
               </div>
             </template>
             <template #default>
@@ -153,6 +181,8 @@
           v-if="shouldShowThemeToggle"
           @click="themeAnimation"
           :icon="isDark ? 'ri:sun-fill' : 'ri:moon-line'"
+          :aria-label="isDark ? 'Beralih ke Tema Terang' : 'Beralih ke Tema Gelap'"
+          :title="isDark ? 'Tema Terang' : 'Tema Gelap'"
         />
 
         <!-- 用户头像、菜单 -->
@@ -185,6 +215,7 @@
   import { useCommon } from '@/hooks/core/useCommon'
   import { useHeaderBar } from '@/hooks/core/useHeaderBar'
   import ArtUserMenu from './widget/ArtUserMenu.vue'
+  import GlobalSyncIndicator from './widget/GlobalSyncIndicator.vue'
 
   defineOptions({ name: 'ArtHeaderBar' })
 
@@ -208,7 +239,6 @@
     shouldShowGlobalSearch,
     shouldShowFullscreen,
     shouldShowNotification,
-    shouldShowChat,
     shouldShowLanguage,
     shouldShowSettings,
     shouldShowThemeToggle,
@@ -335,13 +365,6 @@
    */
   const visibleNotice = (): void => {
     showNotice.value = !showNotice.value
-  }
-
-  /**
-   * 打开聊天窗口
-   */
-  const openChat = (): void => {
-    mittBus.emit('openChat')
   }
 </script>
 

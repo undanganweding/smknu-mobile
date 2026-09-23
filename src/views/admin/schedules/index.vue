@@ -3,12 +3,19 @@
     <!-- Header -->
     <div class="art-card p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Jadwal Pelajaran & Kalender Mengajar
-        </h1>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Jadwal Pelajaran & Kalender Mengajar
+          </h1>
+          <span
+            class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold border border-emerald-200 dark:border-emerald-800"
+          >
+            FM.02.03.76.KUR.01.05
+          </span>
+        </div>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Master jadwal tatap muka mingguan dilengkapi deteksi bentrok otomatis (Guru, Ruang, dan
-          Kelas).
+          Master jadwal tatap muka mingguan resmi (Kelas X, XI, XII), pembagian jam ke, kode guru,
+          ruang, dan kegiatan ibadah/jeda.
         </p>
       </div>
 
@@ -19,121 +26,147 @@
       </div>
     </div>
 
-    <!-- Main Table Card -->
-    <div class="art-card p-6">
-      <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-3 max-w-2xl w-full">
-          <ElSelect v-model="filterDay" placeholder="Filter Hari" class="!w-36">
-            <ElOption label="Semua Hari" value="" />
-            <ElOption label="Senin" value="SENIN" />
-            <ElOption label="Selasa" value="SELASA" />
-            <ElOption label="Rabu" value="RABU" />
-            <ElOption label="Kamis" value="KAMIS" />
-            <ElOption label="Jumat" value="JUMAT" />
-            <ElOption label="Sabtu" value="SABTU" />
-          </ElSelect>
+    <!-- Navigation Tabs -->
+    <ElTabs v-model="activeTab" type="border-card" class="rounded-xl shadow-xs">
+      <ElTabPane name="matrix" label="Matriks Jadwal Resmi (FM.02.03.76.KUR.01.05)">
+        <template #label>
+          <div class="flex items-center gap-1.5 py-1">
+            <i class="ri-grid-fill text-emerald-600"></i>
+            <span class="font-semibold">Matriks Jadwal Resmi (Kelas X, XI, XII)</span>
+          </div>
+        </template>
+        <TimetableMatrixView />
+      </ElTabPane>
 
-          <ElSelect
-            v-model="filterClass"
-            placeholder="Pilih Kelas"
-            class="!w-44"
-            filterable
-            clearable
-          >
-            <ElOption label="Semua Kelas" value="" />
-            <ElOption v-for="c in classes" :key="c.id" :label="c.name" :value="c.id" />
-          </ElSelect>
+      <ElTabPane name="list" label="Daftar Sesi Jadwal (Tabel Detail)">
+        <template #label>
+          <div class="flex items-center gap-1.5 py-1">
+            <i class="ri-list-check-2 text-blue-600"></i>
+            <span class="font-semibold">Daftar Sesi Jadwal (Tabel Detail)</span>
+          </div>
+        </template>
 
-          <ElInput
-            v-model="searchQuery"
-            placeholder="Cari guru, mapel, atau ruang..."
-            clearable
-            prefix-icon="ri-search-line"
-            class="!w-64"
-          />
+        <!-- Main Table Card -->
+        <div class="p-2">
+          <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-3 max-w-2xl w-full">
+              <ElSelect v-model="filterDay" placeholder="Filter Hari" class="!w-36">
+                <ElOption label="Semua Hari" value="" />
+                <ElOption label="Senin" value="SENIN" />
+                <ElOption label="Selasa" value="SELASA" />
+                <ElOption label="Rabu" value="RABU" />
+                <ElOption label="Kamis" value="KAMIS" />
+                <ElOption label="Jumat" value="JUMAT" />
+                <ElOption label="Sabtu" value="SABTU" />
+              </ElSelect>
+
+              <ElSelect
+                v-model="filterClass"
+                placeholder="Pilih Kelas"
+                class="!w-44"
+                filterable
+                clearable
+              >
+                <ElOption label="Semua Kelas" value="" />
+                <ElOption v-for="c in classes" :key="c.id" :label="c.name" :value="c.id" />
+              </ElSelect>
+
+              <ElInput
+                v-model="searchQuery"
+                placeholder="Cari guru, mapel, atau ruang..."
+                clearable
+                prefix-icon="ri-search-line"
+                class="!w-64"
+              />
+            </div>
+
+            <div class="text-xs text-gray-500">
+              Total:
+              <span class="font-semibold text-gray-700 dark:text-gray-300">{{
+                filteredSchedules.length
+              }}</span>
+              sesi jadwal
+            </div>
+          </div>
+
+          <ElTable :data="filteredSchedules" v-loading="loading" stripe style="width: 100%">
+            <ElTableColumn prop="dayOfWeek" label="Hari" width="110" align="center">
+              <template #default="{ row }">
+                <ElTag
+                  size="small"
+                  :type="
+                    row.dayOfWeek === 'SENIN'
+                      ? 'primary'
+                      : row.dayOfWeek === 'JUMAT'
+                        ? 'success'
+                        : 'info'
+                  "
+                >
+                  {{ row.dayOfWeek }}
+                </ElTag>
+              </template>
+            </ElTableColumn>
+
+            <ElTableColumn label="Jam Ke & Waktu" width="160">
+              <template #default="{ row }">
+                <div class="text-xs space-y-0.5">
+                  <div class="font-bold text-gray-800 dark:text-gray-200">
+                    Jam ke-{{ row.periodStart }} s/d {{ row.periodEnd }}
+                  </div>
+                  <div class="text-gray-400 font-mono">{{ row.timeStart }} - {{ row.timeEnd }}</div>
+                </div>
+              </template>
+            </ElTableColumn>
+
+            <ElTableColumn prop="className" label="Kelas Rombel" min-width="140">
+              <template #default="{ row }">
+                <span class="font-bold text-gray-900 dark:text-gray-100">{{ row.className }}</span>
+              </template>
+            </ElTableColumn>
+
+            <ElTableColumn prop="subjectName" label="Mata Pelajaran" min-width="220">
+              <template #default="{ row }">
+                <div class="font-medium text-gray-800 dark:text-gray-200">{{
+                  row.subjectName
+                }}</div>
+              </template>
+            </ElTableColumn>
+
+            <ElTableColumn prop="teacherName" label="Guru Pengampu" min-width="200">
+              <template #default="{ row }">
+                <div class="text-emerald-600 dark:text-emerald-400 font-medium">
+                  {{ row.teacherName }}
+                </div>
+              </template>
+            </ElTableColumn>
+
+            <ElTableColumn label="Ruangan" min-width="150">
+              <template #default="{ row }">
+                <div class="text-xs">
+                  <span class="font-semibold text-gray-700 dark:text-gray-300">{{
+                    row.roomName
+                  }}</span>
+                  <span class="text-gray-400"> ({{ row.roomCode }})</span>
+                </div>
+              </template>
+            </ElTableColumn>
+
+            <ElTableColumn label="Aksi" width="160" fixed="right">
+              <template #default="{ row }">
+                <div class="flex items-center gap-2">
+                  <ElButton size="small" type="primary" link @click="openEditModal(row as any)">
+                    Edit
+                  </ElButton>
+                  <ElButton size="small" type="danger" link @click="handleDelete(row as any)">
+                    Hapus
+                  </ElButton>
+                </div>
+              </template>
+            </ElTableColumn>
+          </ElTable>
         </div>
-
-        <div class="text-xs text-gray-500">
-          Total:
-          <span class="font-semibold text-gray-700 dark:text-gray-300">{{
-            filteredSchedules.length
-          }}</span>
-          sesi jadwal
-        </div>
-      </div>
-
-      <ElTable :data="filteredSchedules" v-loading="loading" stripe style="width: 100%">
-        <ElTableColumn prop="dayOfWeek" label="Hari" width="110" align="center">
-          <template #default="{ row }">
-            <ElTag
-              size="small"
-              :type="
-                row.dayOfWeek === 'SENIN'
-                  ? 'primary'
-                  : row.dayOfWeek === 'JUMAT'
-                    ? 'success'
-                    : 'info'
-              "
-            >
-              {{ row.dayOfWeek }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn label="Jam Ke & Waktu" width="160">
-          <template #default="{ row }">
-            <div class="text-xs space-y-0.5">
-              <div class="font-bold text-gray-800 dark:text-gray-200">
-                Jam ke-{{ row.periodStart }} s/d {{ row.periodEnd }}
-              </div>
-              <div class="text-gray-400 font-mono">{{ row.timeStart }} - {{ row.timeEnd }}</div>
-            </div>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn prop="className" label="Kelas Rombel" min-width="140">
-          <template #default="{ row }">
-            <span class="font-bold text-gray-900 dark:text-gray-100">{{ row.className }}</span>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn prop="subjectName" label="Mata Pelajaran" min-width="220">
-          <template #default="{ row }">
-            <div class="font-medium text-gray-800 dark:text-gray-200">{{ row.subjectName }}</div>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn prop="teacherName" label="Guru Pengampu" min-width="200">
-          <template #default="{ row }">
-            <div class="text-emerald-600 dark:text-emerald-400 font-medium">
-              {{ row.teacherName }}
-            </div>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn label="Ruangan" min-width="150">
-          <template #default="{ row }">
-            <div class="text-xs">
-              <span class="font-semibold text-gray-700 dark:text-gray-300">{{ row.roomName }}</span>
-              <span class="text-gray-400"> ({{ row.roomCode }})</span>
-            </div>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn label="Aksi" width="160" fixed="right">
-          <template #default="{ row }">
-            <div class="flex items-center gap-2">
-              <ElButton size="small" type="primary" link @click="openEditModal(row as any)">
-                Edit
-              </ElButton>
-              <ElButton size="small" type="danger" link @click="handleDelete(row as any)">
-                Hapus
-              </ElButton>
-            </div>
-          </template>
-        </ElTableColumn>
-      </ElTable>
-    </div>
+      </ElTabPane>
+    </ElTabs>
 
     <!-- Create / Edit Modal -->
     <ElDialog
@@ -237,6 +270,7 @@
 <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
+  import TimetableMatrixView from './components/TimetableMatrixView.vue'
   import { scheduleService, ScheduleWithDetails } from '@/core/services/master/ScheduleService'
   import {
     assignmentService,
@@ -248,11 +282,13 @@
   import type { ClassEntity, RoomEntity, DayOfWeek } from '@/core/types'
   import type { FormInstance, FormRules } from 'element-plus'
 
+  const activeTab = ref('matrix')
+
   const schedules = ref<ScheduleWithDetails[]>([])
   const classes = ref<ClassEntity[]>([])
   const rooms = ref<RoomEntity[]>([])
   const assignments = ref<AssignmentWithDetails[]>([])
-  const loading = ref(false)
+  const loading = ref(true)
   const saving = ref(false)
   const searchQuery = ref('')
   const filterDay = ref<string>('')

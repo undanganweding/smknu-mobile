@@ -29,6 +29,10 @@ export interface TeacherJournalSessionData {
   topic: string
   activitySummary: string
   notes: string
+  material?: string
+  learningActivity?: string
+  learningOutcome?: string
+  status?: 'DRAFT' | 'COMPLETED' | 'LOCKED'
   studentAttendanceSummary?: AttendanceSummary
   attendanceDone: boolean
   createdAt?: string
@@ -38,9 +42,13 @@ export interface TeacherJournalSessionData {
 export interface SaveJournalInput {
   scheduleId: string
   date: string
-  topic: string
-  activitySummary: string
+  topic?: string
+  activitySummary?: string
   notes?: string
+  material?: string
+  learningActivity?: string
+  learningOutcome?: string
+  status?: 'DRAFT' | 'COMPLETED' | 'LOCKED'
 }
 
 export class JournalService {
@@ -146,14 +154,16 @@ export class JournalService {
     if (!input.date) {
       throw new Error('Tanggal jurnal wajib diisi.')
     }
-    const cleanTopic = input.topic?.trim()
+    const cleanTopic = (input.topic || input.material)?.trim()
     if (!cleanTopic) {
       throw new Error('Materi / Topik pembelajaran wajib diisi.')
     }
-    const cleanActivity = input.activitySummary?.trim()
+    const cleanActivity = (input.activitySummary || input.learningActivity)?.trim()
     if (!cleanActivity) {
       throw new Error('Kegiatan pembelajaran wajib diisi.')
     }
+    const learningOutcome = input.learningOutcome?.trim()
+    const targetStatus = input.status || 'COMPLETED'
 
     // 1. Validate authorization
     const { schedule, teacherId } = await this.validateTeacherOwnership(
@@ -173,6 +183,10 @@ export class JournalService {
     const existing = await repositories.journals.findByScheduleAndDate(input.scheduleId, input.date)
 
     if (existing) {
+      if (existing.journalStatus === 'LOCKED') {
+        throw new Error('Jurnal mengajar ini telah terkunci dan tidak dapat diubah.')
+      }
+
       // UPDATE existing journal
       const updatedEntity: JournalEntity = {
         ...existing,
@@ -183,6 +197,10 @@ export class JournalService {
         semester: schedule.semester,
         topic: cleanTopic,
         activitySummary: cleanActivity,
+        material: cleanTopic,
+        learningActivity: cleanActivity,
+        learningOutcome: learningOutcome || existing.learningOutcome,
+        journalStatus: targetStatus,
         notes: input.notes?.trim() || undefined,
         studentAttendanceSummary: attStatus.summary || existing.studentAttendanceSummary,
         updatedBy: teacherId,
@@ -209,6 +227,10 @@ export class JournalService {
         semester: schedule.semester,
         topic: cleanTopic,
         activitySummary: cleanActivity,
+        material: cleanTopic,
+        learningActivity: cleanActivity,
+        learningOutcome,
+        journalStatus: targetStatus,
         notes: input.notes?.trim() || undefined,
         studentAttendanceSummary: attStatus.summary,
         createdBy: teacherId,
@@ -223,6 +245,28 @@ export class JournalService {
         isNew: true
       }
     }
+  }
+
+  /**
+   * Lock Journal to prevent further edits
+   */
+  public async lockJournal(id: string, customTeacherId?: string): Promise<JournalEntity> {
+    const existing = await repositories.journals.findById(id)
+    if (!existing) {
+      throw new Error('Data jurnal mengajar tidak ditemukan.')
+    }
+
+    await this.validateTeacherOwnership(existing.scheduleId, customTeacherId)
+
+    const updated: JournalEntity = {
+      ...existing,
+      journalStatus: 'LOCKED',
+      updatedAt: new Date().toISOString()
+    }
+
+    await repositories.journals.update(id, updated)
+    await syncService.enqueue('JOURNAL', id, 'UPDATE', updated)
+    return updated
   }
 
   /**

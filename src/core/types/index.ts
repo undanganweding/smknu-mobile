@@ -132,6 +132,19 @@ export interface ScheduleEntity extends BaseEntity {
   status: AccountStatus
 }
 
+export type TimeSlotType = 'TEACHING' | 'BREAK' | 'DHUHA' | 'DHUHUR' | 'MUJAHADAH' | 'OTHER'
+
+export interface TimeSlotEntity extends BaseEntity {
+  slotNumber: number
+  startTime: string
+  endTime: string
+  label: string
+  type: TimeSlotType
+  dayOfWeek?: DayOfWeek
+  description?: string
+  status: AccountStatus
+}
+
 export interface StudentAttendanceRecord {
   studentId: string
   status: AttendanceStatus
@@ -173,6 +186,10 @@ export interface JournalEntity extends BaseEntity {
   notes?: string
   createdBy: string
   updatedBy?: string
+  material?: string
+  learningActivity?: string
+  learningOutcome?: string
+  journalStatus?: 'DRAFT' | 'COMPLETED' | 'LOCKED'
 }
 
 export interface StudentAssessmentScore {
@@ -217,7 +234,10 @@ export interface AnnouncementEntity extends BaseEntity {
   published: boolean
   pinned: boolean
   authorId: string
+  publishedAt?: string
   expiresAt?: string
+  isPinned?: boolean
+  isPublished?: boolean
 }
 
 export interface SchoolIdentityEntity extends BaseEntity {
@@ -312,3 +332,4 @@ export interface AuditLogEntity extends BaseEntity {
 }
 
 export * from './auth'
+export * from './cloud'

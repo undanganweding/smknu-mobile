@@ -6,6 +6,9 @@
 
 import { repositories } from '../../repositories'
 import { authService, AuthorizationError } from '../auth'
+import { completenessEngine } from '../academic/CompletenessEngine'
+import { SubmissionService } from '../academic/SubmissionService'
+import * as XLSX from 'xlsx'
 import type { SemesterType, AssessmentType, StudentEntity, DayOfWeek } from '../../types'
 
 export interface ReportFilterInput {
@@ -18,6 +21,83 @@ export interface ReportFilterInput {
   subjectId?: string
   studentId?: string
   assessmentType?: AssessmentType
+}
+
+export interface DailyAttendanceRecapItem {
+  id: string
+  date: string
+  timeSlot: string
+  teacherName: string
+  subjectName: string
+  className: string
+  totalStudents: number
+  hadir: number
+  izin: number
+  sakit: number
+  alpa: number
+  terlambat: number
+  dispensasi: number
+}
+
+export interface DisciplineRecapItem {
+  id: string
+  studentId: string
+  studentNis: string
+  studentName: string
+  className: string
+  teacherId: string
+  teacherName: string
+  date: string
+  category: string
+  severity: string
+  points: number
+  type: 'PRAISE' | 'VIOLATION' | 'NOTE'
+  description: string
+  followUp: string
+  status: string
+}
+
+export interface DisciplineRecapSummary {
+  totalIncidents: number
+  totalPoints: number
+  totalPraise: number
+  totalViolations: number
+  records: DisciplineRecapItem[]
+}
+
+export interface StudentAssessmentRowItem {
+  assessmentId: string
+  assessmentTitle: string
+  type: AssessmentType
+  date: string
+  teacherName: string
+  subjectName: string
+  className: string
+  studentId: string
+  studentNis: string
+  studentName: string
+  score: number
+  kkm: number
+  status: 'TUNTAS' | 'BELUM TUNTAS'
+}
+
+export interface TeacherCompletenessRecapItem {
+  teacherId: string
+  nip: string
+  name: string
+  attendanceCompleteness: number
+  journalCompleteness: number
+  assessmentCompleteness: number
+  disciplineCompleteness: number
+  overallCompleteness: number
+  isReadyToSubmit: boolean
+  submissionStatus: string
+}
+
+export interface XlsxWorksheetData {
+  name: string
+  headers: string[]
+  rows: (string | number)[][]
 }
 
 export interface StudentAttendanceRecapItem {
@@ -100,8 +180,10 @@ export interface JournalRecapItem {
   subjectId: string
   subjectName: string
   topic: string
+  learningObjectives?: string
   activitySummary: string
   notes: string
+  status?: string
   createdAt: string
 }
 
@@ -159,6 +241,17 @@ export interface StudentAcademicSummary {
       maxScore: number
       kkm: number
       isPassing: boolean
+    }>
+  }
+  discipline?: {
+    totalIncidents: number
+    totalPoints: number
+    notes: Array<{
+      date: string
+      category: string
+      type: string
+      description: string
+      points: number
     }>
   }
 }
@@ -761,8 +854,10 @@ export class ReportService {
       subjectId: j.teacherAssignmentId,
       subjectName: asgSubjectMap.get(j.teacherAssignmentId) || 'Mata Pelajaran',
       topic: j.topic,
+      learningObjectives: (j as any).learningObjectives || (j as any).curriculumPhase || '-',
       activitySummary: j.activitySummary,
       notes: j.notes || '-',
+      status: (j as any).isLocked ? 'LOCKED' : 'COMPLETED',
       createdAt: j.createdAt
     }))
 
@@ -977,6 +1072,18 @@ export class ReportService {
 
     const averageScore = gradedCount > 0 ? Number((totalScoreSum / gradedCount).toFixed(2)) : 0
 
+    // Discipline records for student
+    const allDiscipline = await repositories.disciplineNotes.findAll()
+    const studentDiscipline = allDiscipline.filter((d) => d.studentId === student.id)
+    const totalDisciplinePoints = studentDiscipline.reduce((sum, d) => sum + (d.point || 0), 0)
+    const disciplineNotes = studentDiscipline.map((d) => ({
+      date: d.date,
+      category: d.type || 'Disiplin',
+      type: d.type || 'VIOLATION',
+      description: d.description,
+      points: d.point || 0
+    }))
+
     return {
       student,
       className,
@@ -1000,6 +1107,11 @@ export class ReportService {
         passingCount,
         failingCount,
         details: scoreDetails
+      },
+      discipline: {
+        totalIncidents: studentDiscipline.length,
+        totalPoints: totalDisciplinePoints,
+        notes: disciplineNotes
       }
     }
   }
@@ -1056,7 +1168,379 @@ export class ReportService {
   }
 
   /**
-   * 8. Export CSV Utility
+   * 8. Daily Attendance Recap (Tangal, Jam, Guru, Mapel, Kelas, Jumlah Siswa, Hadir, Izin, Sakit, Alpa, Terlambat, Dispensasi)
+   */
+  public async getDailyAttendanceRecap(
+    inputFilter: ReportFilterInput = {}
+  ): Promise<DailyAttendanceRecapItem[]> {
+    const filter = await this.enforceReportAuthorization(inputFilter)
+
+    let attendances = await repositories.attendances.findAll()
+    if (filter.academicYearId) {
+      attendances = attendances.filter((a) => a.academicYearId === filter.academicYearId)
+    }
+    if (filter.semester) {
+      attendances = attendances.filter((a) => a.semester === filter.semester)
+    }
+    if (filter.startDate) {
+      attendances = attendances.filter((a) => a.date >= filter.startDate!)
+    }
+    if (filter.endDate) {
+      attendances = attendances.filter((a) => a.date <= filter.endDate!)
+    }
+    if (filter.classId) {
+      attendances = attendances.filter((a) => a.classId === filter.classId)
+    }
+    if (filter.teacherId) {
+      attendances = attendances.filter((a) => a.createdBy === filter.teacherId)
+    }
+
+    const teachers = await repositories.teachers.findAll()
+    const teacherMap = new Map<string, string>()
+    teachers.forEach((t) => teacherMap.set(t.id, t.name))
+
+    const classes = await repositories.classes.findAll()
+    const classMap = new Map<string, string>()
+    classes.forEach((c) => classMap.set(c.id, c.name))
+
+    const assignments = await repositories.teacherAssignments.findAll()
+    const subjects = await repositories.subjects.findAll()
+    const subjectMap = new Map<string, string>()
+    subjects.forEach((s) => subjectMap.set(s.id, s.name))
+
+    const asgSubjectMap = new Map<string, string>()
+    assignments.forEach((a) => {
+      const sName = subjectMap.get(a.subjectId) || 'Mata Pelajaran'
+      asgSubjectMap.set(a.id, sName)
+    })
+
+    const results: DailyAttendanceRecapItem[] = attendances.map((att) => {
+      let h = 0,
+        i = 0,
+        s = 0,
+        a = 0,
+        t = 0,
+        d = 0
+      for (const rec of att.records || []) {
+        switch (rec.status) {
+          case 'H':
+            h++
+            break
+          case 'I':
+            i++
+            break
+          case 'S':
+            s++
+            break
+          case 'A':
+            a++
+            break
+          case 'T':
+            t++
+            break
+          case 'D':
+            d++
+            break
+        }
+      }
+      const total = h + i + s + a + t + d
+      return {
+        id: att.id,
+        date: att.date,
+        timeSlot: 'Jam Reguler',
+        teacherName: teacherMap.get(att.createdBy) || 'Guru Pengampu',
+        subjectName: asgSubjectMap.get(att.teacherAssignmentId) || 'Mata Pelajaran',
+        className: classMap.get(att.classId) || 'Kelas',
+        totalStudents: total,
+        hadir: h,
+        izin: i,
+        sakit: s,
+        alpa: a,
+        terlambat: t,
+        dispensasi: d
+      }
+    })
+
+    return results.sort((x, y) => y.date.localeCompare(x.date))
+  }
+
+  /**
+   * 9. Discipline & Character Recap (Student, Class, Teacher, Date, Category, Severity, Points, Description, Follow-up)
+   */
+  public async getDisciplineRecap(
+    inputFilter: ReportFilterInput = {}
+  ): Promise<DisciplineRecapSummary> {
+    const filter = await this.enforceReportAuthorization(inputFilter)
+
+    let notes = await repositories.disciplineNotes.findAll()
+    if (filter.startDate) {
+      notes = notes.filter((n) => n.date >= filter.startDate!)
+    }
+    if (filter.endDate) {
+      notes = notes.filter((n) => n.date <= filter.endDate!)
+    }
+    if (filter.classId) {
+      notes = notes.filter((n) => n.classId === filter.classId)
+    }
+    if (filter.studentId) {
+      notes = notes.filter((n) => n.studentId === filter.studentId)
+    }
+    if (filter.teacherId) {
+      notes = notes.filter((n) => n.teacherId === filter.teacherId)
+    }
+
+    const students = await repositories.students.findAll()
+    const studentMap = new Map<string, { nis: string; name: string }>()
+    students.forEach((s) => studentMap.set(s.id, { nis: s.nis, name: s.name }))
+
+    const classes = await repositories.classes.findAll()
+    const classMap = new Map<string, string>()
+    classes.forEach((c) => classMap.set(c.id, c.name))
+
+    const teachers = await repositories.teachers.findAll()
+    const teacherMap = new Map<string, string>()
+    teachers.forEach((t) => teacherMap.set(t.id, t.name))
+
+    let totalPoints = 0
+    let totalPraise = 0
+    let totalViolations = 0
+
+    const items: DisciplineRecapItem[] = notes.map((n) => {
+      const st = studentMap.get(n.studentId) || { nis: '-', name: 'Siswa' }
+      const points = n.point || 0
+      totalPoints += points
+      if (n.type === 'PRAISE') {
+        totalPraise++
+      } else {
+        totalViolations++
+      }
+
+      return {
+        id: n.id,
+        studentId: n.studentId,
+        studentNis: st.nis,
+        studentName: st.name,
+        className: classMap.get(n.classId) || 'Kelas',
+        teacherId: n.teacherId,
+        teacherName: teacherMap.get(n.teacherId) || 'Guru',
+        date: n.date,
+        category: n.type || 'Disiplin',
+        severity: 'NORMAL',
+        points,
+        type: n.type || 'VIOLATION',
+        description: n.description,
+        followUp: n.followup || '-',
+        status: 'RESOLVED'
+      }
+    })
+
+    items.sort((a, b) => b.date.localeCompare(a.date))
+
+    return {
+      totalIncidents: items.length,
+      totalPoints,
+      totalPraise,
+      totalViolations,
+      records: items
+    }
+  }
+
+  /**
+   * 10. Detailed Student Assessment Report (Preserving exact decimals, KKM status)
+   */
+  public async getDetailedAssessmentReport(
+    inputFilter: ReportFilterInput = {}
+  ): Promise<StudentAssessmentRowItem[]> {
+    const filter = await this.enforceReportAuthorization(inputFilter)
+
+    let assessments = await repositories.assessments.findAll()
+
+    if (filter.academicYearId) {
+      assessments = assessments.filter((asm) => asm.academicYearId === filter.academicYearId)
+    }
+    if (filter.semester) {
+      assessments = assessments.filter((asm) => asm.semester === filter.semester)
+    }
+    if (filter.startDate) {
+      assessments = assessments.filter((asm) => (asm.date || '') >= filter.startDate!)
+    }
+    if (filter.endDate) {
+      assessments = assessments.filter((asm) => (asm.date || '') <= filter.endDate!)
+    }
+    if (filter.classId) {
+      assessments = assessments.filter((asm) => asm.classId === filter.classId)
+    }
+    if (filter.teacherId) {
+      assessments = assessments.filter((asm) => asm.createdBy === filter.teacherId)
+    }
+    if (filter.assessmentType) {
+      assessments = assessments.filter((asm) => asm.type === filter.assessmentType)
+    }
+    if (filter.subjectId) {
+      assessments = assessments.filter((asm) => asm.subjectId === filter.subjectId)
+    }
+
+    const teachers = await repositories.teachers.findAll()
+    const teacherMap = new Map<string, string>()
+    teachers.forEach((t) => teacherMap.set(t.id, t.name))
+
+    const classes = await repositories.classes.findAll()
+    const classMap = new Map<string, string>()
+    classes.forEach((c) => classMap.set(c.id, c.name))
+
+    const subjects = await repositories.subjects.findAll()
+    const subjectMap = new Map<string, string>()
+    subjects.forEach((s) => subjectMap.set(s.id, s.name))
+
+    const students = await repositories.students.findAll()
+    const studentMap = new Map<string, { nis: string; name: string }>()
+    students.forEach((s) => studentMap.set(s.id, { nis: s.nis, name: s.name }))
+
+    const rows: StudentAssessmentRowItem[] = []
+
+    for (const asm of assessments) {
+      const kkm = 75
+      const teacherName = teacherMap.get(asm.createdBy) || 'Guru Pengampu'
+      const subjectName = subjectMap.get(asm.subjectId) || 'Mata Pelajaran'
+      const className = classMap.get(asm.classId) || 'Kelas'
+
+      for (const sc of asm.scores || []) {
+        if (filter.studentId && sc.studentId !== filter.studentId) continue
+
+        const scoreNum = Number(sc.score)
+        const st = studentMap.get(sc.studentId) || { nis: '-', name: 'Siswa' }
+        rows.push({
+          assessmentId: asm.id,
+          assessmentTitle: asm.title,
+          type: asm.type,
+          date: asm.date || '',
+          teacherName,
+          subjectName,
+          className,
+          studentId: sc.studentId,
+          studentNis: st.nis,
+          studentName: st.name,
+          score: scoreNum,
+          kkm,
+          status: scoreNum >= kkm ? 'TUNTAS' : 'BELUM TUNTAS'
+        })
+      }
+    }
+
+    return rows.sort((a, b) => a.studentName.localeCompare(b.studentName, 'id-ID'))
+  }
+
+  /**
+   * 11. Teacher Completeness Recap
+   */
+  public async getTeacherCompletenessRecap(
+    academicPeriodId?: string
+  ): Promise<TeacherCompletenessRecapItem[]> {
+    const teachers = await repositories.teachers.findAll()
+    const activeTeachers = teachers.filter((t) => t.status === 'ACTIVE')
+
+    const subService = SubmissionService.getInstance()
+    const allSubmissions = await subService.findAll()
+
+    const list: TeacherCompletenessRecapItem[] = []
+    for (const t of activeTeachers) {
+      const report = await completenessEngine.evaluateTeacherCompleteness(t.id, academicPeriodId)
+      const matchingSub = allSubmissions.find(
+        (s) =>
+          s.teacherId === t.id && (!academicPeriodId || s.academicPeriodId === academicPeriodId)
+      )
+
+      const attItem =
+        report.items.find(
+          (i) => i.key === 'ATTENDANCE' || i.label.toLowerCase().includes('presensi')
+        )?.percentage || 0
+      const jrnItem =
+        report.items.find((i) => i.key === 'JOURNAL' || i.label.toLowerCase().includes('jurnal'))
+          ?.percentage || 0
+      const asmItem =
+        report.items.find((i) => i.key === 'ASSESSMENT' || i.label.toLowerCase().includes('nilai'))
+          ?.percentage || 0
+      const dscItem =
+        report.items.find((i) => i.key === 'DISCIPLINE' || i.label.toLowerCase().includes('sikap'))
+          ?.percentage || 0
+
+      list.push({
+        teacherId: t.id,
+        nip: t.nip || '-',
+        name: t.name,
+        attendanceCompleteness: attItem,
+        journalCompleteness: jrnItem,
+        assessmentCompleteness: asmItem,
+        disciplineCompleteness: dscItem,
+        overallCompleteness: report.overallPercentage,
+        isReadyToSubmit: report.isReadyToSubmit,
+        submissionStatus:
+          matchingSub?.status || (report.isReadyToSubmit ? 'READY_TO_SUBMIT' : 'DRAFT')
+      })
+    }
+
+    return list.sort((a, b) => a.name.localeCompare(b.name, 'id-ID'))
+  }
+
+  /**
+   * 12. Real Structured XLSX Export Utility
+   */
+  public exportToXlsx(filename: string, sheets: XlsxWorksheetData[]): ArrayBuffer {
+    const workbook = XLSX.utils.book_new()
+    for (const sheet of sheets) {
+      const wsData = [sheet.headers, ...sheet.rows]
+      const worksheet = XLSX.utils.aoa_to_sheet(wsData)
+      const safeSheetName = sheet.name.replace(/[:\\/?*[\]]/g, '').substring(0, 31) || 'Sheet'
+      XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName)
+    }
+    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `${filename}.xlsx`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+    }
+    return buffer
+  }
+
+  /**
+   * 13. Dedicated Browser Print Helper via clean iframe (No window.alert/window.open)
+   */
+  public printHtmlDocument(html: string): void {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return
+    let iframe = document.getElementById('report-print-frame') as HTMLIFrameElement
+    if (!iframe) {
+      iframe = document.createElement('iframe')
+      iframe.id = 'report-print-frame'
+      iframe.style.position = 'fixed'
+      iframe.style.right = '0'
+      iframe.style.bottom = '0'
+      iframe.style.width = '0'
+      iframe.style.height = '0'
+      iframe.style.border = '0'
+      document.body.appendChild(iframe)
+    }
+    const doc = iframe.contentWindow?.document
+    if (doc) {
+      doc.open()
+      doc.write(html)
+      doc.close()
+      iframe.contentWindow?.focus()
+      setTimeout(() => {
+        iframe.contentWindow?.print()
+      }, 300)
+    }
+  }
+
+  /**
+   * 14. Export CSV Utility
    */
   public exportToCsv(filename: string, headers: string[], rows: (string | number)[][]): void {
     const csvContent =
@@ -1075,7 +1559,7 @@ export class ReportService {
   }
 
   /**
-   * 9. Generate Print HTML Document
+   * 15. Generate Print HTML Document
    */
   public async generatePrintHtml(
     reportTitle: string,

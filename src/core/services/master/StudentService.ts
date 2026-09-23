@@ -5,6 +5,7 @@
 
 import { repositories } from '../../repositories'
 import type { StudentEntity, StudentStatus, GenderType } from '../../types'
+import { masterDataIntegrityService, MasterDataIntegrityError } from './MasterDataIntegrityService'
 
 export interface CreateStudentDTO {
   nis: string
@@ -75,6 +76,11 @@ export class StudentService {
     }
     if (!data.classId) {
       throw new Error('Kelas rombel siswa wajib dipilih.')
+    }
+
+    const integrity = await masterDataIntegrityService.validateStudent(data)
+    if (!integrity.valid) {
+      throw new MasterDataIntegrityError(integrity.errors[0], integrity.errors)
     }
 
     const cleanNis = data.nis.trim()

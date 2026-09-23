@@ -5,6 +5,7 @@
 
 import { repositories } from '../../repositories'
 import type { ClassEntity, ClassLevel, AccountStatus, MajorEntity } from '../../types'
+import { masterDataIntegrityService, MasterDataIntegrityError } from './MasterDataIntegrityService'
 
 export interface CreateClassDTO {
   name: string
@@ -73,6 +74,11 @@ export class ClassService {
     }
     if (!data.academicYearId) {
       throw new Error('Tahun pelajaran wajib ditentukan.')
+    }
+
+    const integrity = await masterDataIntegrityService.validateClass(data)
+    if (!integrity.valid) {
+      throw new MasterDataIntegrityError(integrity.errors[0], integrity.errors)
     }
 
     const now = new Date().toISOString()

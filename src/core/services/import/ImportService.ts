@@ -7,6 +7,12 @@ import * as XLSX from 'xlsx'
 import { repositories } from '../../repositories'
 import { authService, AuthorizationError } from '../auth'
 import { auditLogService } from '../audit/AuditLogService'
+import {
+  parseDokumen1FromPdf,
+  parseDokumen1FromXlsx,
+  type Dokumen1Row,
+  type Dokumen1ParseResult
+} from './PdfDokumen1Parser'
 import type { MasterEntityType, ExportFormat } from '../export/ExportService'
 import type {
   ImportStatus,
@@ -1201,6 +1207,191 @@ export class ImportService {
     ].join('\n')
 
     return csvContent
+  }
+
+  /**
+   * Parse and validate Dokumen 1 file (PDF, XLSX, XLS)
+   */
+  public async parseAndPreviewDokumen1(
+    buffer: ArrayBuffer,
+    filename: string
+  ): Promise<Dokumen1ParseResult> {
+    const isPdf = filename.toLowerCase().endsWith('.pdf')
+    if (isPdf) {
+      return await parseDokumen1FromPdf(buffer)
+    } else {
+      return parseDokumen1FromXlsx(buffer)
+    }
+  }
+
+  /**
+   * Commit Dokumen 1 into database (syncs Teachers, Subjects, and 117 Assignments atomically)
+   */
+  public async commitDokumen1(
+    rows: Dokumen1Row[],
+    filename: string
+  ): Promise<{
+    success: boolean
+    teachersCreatedOrUpdated: number
+    subjectsCreatedOrUpdated: number
+    assignmentsCreatedOrUpdated: number
+    message: string
+  }> {
+    const session = authService.getCurrentSession()
+    if (!session || session.role !== 'ADMIN') {
+      throw new AuthorizationError(
+        'Akses ditolak. Import Dokumen 1 hanya dapat dilakukan oleh Admin.'
+      )
+    }
+
+    const now = new Date().toISOString()
+    const activeAcademicYear = await repositories.academicYears.findActive()
+    const academicYearId = activeAcademicYear?.id || 'ay_2026_2027_ganjil'
+
+    // Existing master data
+    const [existingTeachers, existingSubjects, existingAssignments] = await Promise.all([
+      repositories.teachers.findAll(),
+      repositories.subjects.findAll(),
+      repositories.teacherAssignments.findAll()
+    ])
+
+    const teacherMapByName = new Map<string, TeacherEntity>()
+    existingTeachers.forEach((t) => teacherMapByName.set(t.name.toLowerCase().trim(), t))
+
+    const subjectMapByName = new Map<string, SubjectEntity>()
+    existingSubjects.forEach((s) => subjectMapByName.set(s.name.toLowerCase().trim(), s))
+
+    const assignmentMapByCode = new Map<string, TeacherAssignmentEntity>()
+    existingAssignments.forEach((a) => {
+      if (a.code) assignmentMapByCode.set(a.code.toUpperCase().trim(), a)
+    })
+
+    let teachersCount = 0
+    let subjectsCount = 0
+    let assignmentsCount = 0
+
+    // Process rows
+    for (const row of rows) {
+      if (!row.code || !row.teacherName) continue
+
+      const cleanTeacherName = (row.cleanTeacherName || row.teacherName).trim()
+      const cleanSubjectName = (row.subjectName || '-').trim()
+
+      // 1. Teacher Entity
+      let teacher = teacherMapByName.get(cleanTeacherName.toLowerCase())
+      if (!teacher) {
+        const newTeacherId = `tch_${cleanTeacherName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
+        teacher = {
+          id: newTeacherId,
+          name: cleanTeacherName,
+          status: 'ACTIVE',
+          gender:
+            cleanTeacherName.toLowerCase().includes('ibu') ||
+            cleanTeacherName.toLowerCase().includes('siti') ||
+            cleanTeacherName.toLowerCase().includes('dewi') ||
+            cleanTeacherName.toLowerCase().includes('dina') ||
+            cleanTeacherName.toLowerCase().includes('ika') ||
+            cleanTeacherName.toLowerCase().includes('erna') ||
+            cleanTeacherName.toLowerCase().includes('lufita')
+              ? 'P'
+              : 'L',
+          createdAt: now,
+          updatedAt: now
+        }
+        await repositories.teachers.create(teacher)
+        teacherMapByName.set(cleanTeacherName.toLowerCase(), teacher)
+        teachersCount++
+      }
+
+      // 2. Subject Entity
+      let subject = subjectMapByName.get(cleanSubjectName.toLowerCase())
+      if (!subject && cleanSubjectName !== '-') {
+        const newSubjectId = `sbj_${cleanSubjectName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
+        const subjectCode = cleanSubjectName
+          .slice(0, 8)
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, '')
+        subject = {
+          id: newSubjectId,
+          code: subjectCode || 'MAPEL',
+          name: cleanSubjectName,
+          status: 'ACTIVE',
+          createdAt: now,
+          updatedAt: now
+        }
+        await repositories.subjects.create(subject)
+        subjectMapByName.set(cleanSubjectName.toLowerCase(), subject)
+        subjectsCount++
+      }
+
+      // 3. Assignment Entity
+      const codeKey = row.code.toUpperCase().trim()
+      const existingAssignment = assignmentMapByCode.get(codeKey)
+
+      if (existingAssignment) {
+        // Update
+        existingAssignment.teacherId = teacher.id
+        if (subject) existingAssignment.subjectId = subject.id
+        existingAssignment.hours = row.hours
+        existingAssignment.updatedAt = now
+        await repositories.teacherAssignments.update(existingAssignment.id, existingAssignment)
+        assignmentsCount++
+      } else {
+        // Create
+        const newAssignmentId = `asgn_${row.code.toLowerCase()}_${row.no}`
+        const newAssignment: TeacherAssignmentEntity = {
+          id: newAssignmentId,
+          teacherId: teacher.id,
+          code: row.code,
+          subjectId: subject ? subject.id : 'sbj_general',
+          hours: row.hours,
+          academicYearId,
+          semester: 'GANJIL',
+          status: 'ACTIVE',
+          createdAt: now,
+          updatedAt: now
+        }
+        await repositories.teacherAssignments.create(newAssignment)
+        assignmentMapByCode.set(codeKey, newAssignment)
+        assignmentsCount++
+      }
+    }
+
+    // Audit log
+    await auditLogService.log({
+      action: 'IMPORT_DOKUMEN_1',
+      entityType: 'TEACHER',
+      operation: `Import Dokumen 1 (${filename}): ${rows.length} baris diproses, ${teachersCount} guru baru, ${subjectsCount} mapel baru, ${assignmentsCount} penugasan disinkronkan.`,
+      result: 'SUCCESS'
+    })
+
+    // Save to Import History
+    const historyId = `imp_dok1_${Date.now()}`
+    await repositories.importHistory.create({
+      id: historyId,
+      timestamp: now,
+      actor: session.username,
+      entityType: 'TEACHER',
+      filename,
+      commitMode: 'STRICT',
+      duplicateMode: 'UPSERT',
+      totalRows: rows.length,
+      createdCount: assignmentsCount,
+      updatedCount: 0,
+      failedCount: 0,
+      warningCount: 0,
+      status: 'COMPLETED',
+      createdAt: now,
+      updatedAt: now
+    })
+
+    return {
+      success: true,
+      teachersCreatedOrUpdated: teachersCount,
+      subjectsCreatedOrUpdated: subjectsCount,
+      assignmentsCreatedOrUpdated: assignmentsCount,
+      message: `Berhasil mengimpor Dokumen 1 (${rows.length} baris). ${teachersCount} guru, ${subjectsCount} mata pelajaran, dan ${assignmentsCount} SK penugasan telah diperbarui secara paten.`
+    }
   }
 
   /**

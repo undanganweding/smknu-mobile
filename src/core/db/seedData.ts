@@ -6,6 +6,7 @@
 
 import { repositories } from '../repositories'
 import { hashPassword } from '../security/password'
+import { VERIFIED_GRADE_X_LEGGERS } from '../services/master/ClassLeggerData'
 import type {
   SchoolIdentityEntity,
   AcademicYearEntity,
@@ -1157,9 +1158,10 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
     const teacherMap = new Map<string, TeacherEntity>()
     rawTeacherData.forEach((row) => {
       const cleanName = row.name.replace(/\.\d+$/, '').trim()
-      if (!teacherMap.has(cleanName)) {
-        const id = `tch_${cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
-        teacherMap.set(cleanName, {
+      const teacherKey = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      if (!teacherMap.has(teacherKey)) {
+        const id = `tch_${teacherKey}`
+        teacherMap.set(teacherKey, {
           id,
           name: cleanName,
           status: 'ACTIVE',
@@ -1175,9 +1177,10 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
     const subjectMap = new Map<string, SubjectEntity>()
     rawTeacherData.forEach((row) => {
       const cleanSubject = row.subject.trim()
-      if (!subjectMap.has(cleanSubject)) {
-        const id = `sbj_${cleanSubject.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
-        subjectMap.set(cleanSubject, {
+      const subjectKey = cleanSubject.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      if (!subjectMap.has(subjectKey)) {
+        const id = `sbj_${subjectKey}`
+        subjectMap.set(subjectKey, {
           id,
           code: cleanSubject
             .slice(0, 8)
@@ -1197,8 +1200,10 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
     const assignments: TeacherAssignmentEntity[] = rawTeacherData.map((row) => {
       const cleanName = row.name.replace(/\.\d+$/, '').trim()
       const cleanSubject = row.subject.trim()
-      const teacher = teacherMap.get(cleanName)!
-      const subject = subjectMap.get(cleanSubject)!
+      const teacherKey = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      const subjectKey = cleanSubject.toLowerCase().replace(/[^a-z0-9]/g, '_')
+      const teacher = teacherMap.get(teacherKey)!
+      const subject = subjectMap.get(subjectKey)!
 
       return {
         id: `asgn_${row.code.toLowerCase()}_${row.no}`,
@@ -1389,111 +1394,30 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
     })
     await repositories.classes.createBatch(classes)
 
-    // 8. Real Verified Students with Exact NIS & Gender from Dokumen 3
-    // Class X-TJKT-1 sample real roster
-    const sampleRealStudents: Array<{
-      nis: string
-      name: string
-      gender: 'L' | 'P'
-      className: string
-    }> = [
-      // X-TJKT-1
-      { nis: 'TJKT.26-3114', name: 'Adi Priatmoko', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3115', name: 'Ahmad Adi Nur', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3116', name: 'Ahmad Araviq', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3117', name: 'Aisha Nur Medina', gender: 'P', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3118', name: 'Amelia Cahya Putri', gender: 'P', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3119', name: 'Arya Meindra Nugraha', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3120', name: 'Carissa Putri', gender: 'P', className: 'X-TJKT-1' },
-      {
-        nis: 'TJKT.26-3121',
-        name: 'Eka Maya Immatul Fitriyani',
-        gender: 'P',
-        className: 'X-TJKT-1'
-      },
-      { nis: 'TJKT.26-3122', name: 'Errissa Attama Resti', gender: 'P', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3123', name: 'Fahira Isnaini Ramadhani', gender: 'P', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3124', name: 'Ghani Ahmada Zulfakhi', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3125', name: 'Kaka Rizki Anditya', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3126', name: 'Kurnia Cahya Muhammad', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3127', name: 'Melina Riyani', gender: 'P', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3128', name: 'Mohammat Rafi Aprillio', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3129', name: 'Muhamad Ibnu Latif', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3130', name: 'Muhammad Ridho Hidayat', gender: 'L', className: 'X-TJKT-1' },
-      {
-        nis: 'TJKT.26-3131',
-        name: 'Muhammad Najib Bintang Jannata',
-        gender: 'L',
-        className: 'X-TJKT-1'
-      },
-      { nis: 'TJKT.26-3132', name: 'Muhammad Zaka Alzidan', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3133', name: 'Muhammad Zaqfa Suhendar', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3134', name: 'Mukhammad Zidan Shofa', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3135', name: 'Murinho Putra Pratama', gender: 'L', className: 'X-TJKT-1' },
-      {
-        nis: 'TJKT.26-3136',
-        name: 'Naily Putri Halistyanigrum',
-        gender: 'P',
-        className: 'X-TJKT-1'
-      },
-      { nis: 'TJKT.26-3137', name: 'Raditya Dante Bramacari', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3138', name: 'Rafa Dwi Kurniawan', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3139', name: 'Rafqi Irzan Dafinza', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3140', name: 'Raiyan Abdul Rokhim', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3141', name: 'Rasya Patoh', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3142', name: 'Rengga Ari Setyo', gender: 'L', className: 'X-TJKT-1' },
-      {
-        nis: 'TJKT.26-3143',
-        name: 'Rifki Velenniko Variyansah',
-        gender: 'L',
-        className: 'X-TJKT-1'
-      },
-      { nis: 'TJKT.26-3144', name: 'Rio Ferdinan', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3145', name: 'Tegar Damar Eka Saputra', gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3146', name: 'Tiara Heperiliana', gender: 'P', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3147', name: 'Valya Putri Faeruza', gender: 'P', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3148', name: "Ya'kub", gender: 'L', className: 'X-TJKT-1' },
-      { nis: 'TJKT.26-3149', name: 'Zaqki Maulana Hidayat', gender: 'L', className: 'X-TJKT-1' },
-      // X-BP-1
-      { nis: 'BP.26-2063', name: 'Achmad Hanaffy', gender: 'L', className: 'X-BP-1' },
-      { nis: 'BP.26-2064', name: 'Adinda Zahwa Widyani', gender: 'P', className: 'X-BP-1' },
-      { nis: 'BP.26-2065', name: 'Adrian Fathin Maulana Hisam', gender: 'L', className: 'X-BP-1' },
-      { nis: 'BP.26-2066', name: 'Agustina Dwi Wulan Suci', gender: 'P', className: 'X-BP-1' },
-      { nis: 'BP.26-2067', name: 'Aizha Syifa Mahdiyyah', gender: 'P', className: 'X-BP-1' },
-      { nis: 'BP.26-2068', name: 'Alfredo Insyafi Rheyda', gender: 'L', className: 'X-BP-1' },
-      { nis: 'BP.26-2069', name: 'Angel Zuanita Wida Sari', gender: 'P', className: 'X-BP-1' },
-      { nis: 'BP.26-2070', name: 'Aquilla Azka Salwa Azzahra', gender: 'P', className: 'X-BP-1' },
-      // X-DKV-1
-      { nis: 'DKV.26-0891', name: 'Aditya David Nugroho', gender: 'L', className: 'X-DKV-1' },
-      { nis: 'DKV.26-0892', name: 'Akhsainna Jasmine Humaira', gender: 'P', className: 'X-DKV-1' },
-      { nis: 'DKV.26-0893', name: 'Alliysa Putri Azzaliya', gender: 'P', className: 'X-DKV-1' },
-      { nis: 'DKV.26-0894', name: 'Anita Restu Rahayu', gender: 'P', className: 'X-DKV-1' },
-      { nis: 'DKV.25-0828', name: 'Elbanez Yuan Fitra', gender: 'L', className: 'X-DKV-3' },
-      // X-TE-1
-      { nis: 'TE.26-0724', name: 'Abi Tsamrotul Qolbis Salim', gender: 'L', className: 'X-TE-1' },
-      { nis: 'TE.26-0725', name: 'Achmad Rozyqien', gender: 'L', className: 'X-TE-1' },
-      { nis: 'TE.26-0726', name: 'Ahmad Taufiqul Hakim', gender: 'L', className: 'X-TE-1' },
-      // X-TO-1
-      { nis: 'TO.26-0854', name: 'Aditia Gemilang Permana', gender: 'L', className: 'X-TO-1' },
-      { nis: 'TO.26-0855', name: 'Ahmad Alvaro Tankiansyah', gender: 'L', className: 'X-TO-1' },
-      { nis: 'TO.26-0856', name: 'Ahmad Fajar Nugroho', gender: 'L', className: 'X-TO-1' }
-    ]
+    // 8. Real Verified Students with Exact NIS & Gender from Dokumen 3 & 4 (All 573 Students across Grade X)
+    const classMap = new Map(classes.map((c) => [c.name.toUpperCase().replace(/\s+/g, '-'), c.id]))
+    classes.forEach((c) => classMap.set(c.name.toUpperCase(), c.id))
 
-    const classMap = new Map(classes.map((c) => [c.name, c.id]))
+    const students: StudentEntity[] = []
+    for (const clsDef of VERIFIED_GRADE_X_LEGGERS) {
+      const targetClassId =
+        classMap.get(clsDef.className.toUpperCase().replace(/\s+/g, '-')) ||
+        classMap.get(clsDef.className.toUpperCase()) ||
+        classes[0].id
 
-    const students: StudentEntity[] = sampleRealStudents.map((s) => {
-      const classId = classMap.get(s.className) || classes[0].id
-      return {
-        id: `std_${s.nis.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-        nis: s.nis,
-        name: s.name,
-        gender: s.gender,
-        classId,
-        status: 'ACTIVE',
-        createdAt: now,
-        updatedAt: now
+      for (const s of clsDef.students) {
+        students.push({
+          id: `std_${s.nis.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+          nis: s.nis,
+          name: s.name,
+          gender: s.gender,
+          classId: targetClassId,
+          status: 'ACTIVE',
+          createdAt: now,
+          updatedAt: now
+        })
       }
-    })
+    }
     await repositories.students.createBatch(students)
 
     // 9. Verified Timetable Schedules

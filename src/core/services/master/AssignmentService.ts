@@ -5,6 +5,7 @@
 
 import { repositories } from '../../repositories'
 import type { TeacherAssignmentEntity, AccountStatus, SemesterType } from '../../types'
+import { masterDataIntegrityService, MasterDataIntegrityError } from './MasterDataIntegrityService'
 
 export interface CreateAssignmentDTO {
   teacherId: string
@@ -77,6 +78,15 @@ export class AssignmentService {
     }
     if (!data.academicYearId) {
       throw new Error('Tahun pelajaran wajib ditentukan.')
+    }
+
+    const integrity = await masterDataIntegrityService.validateTeacherAssignment({
+      teacherId: data.teacherId,
+      subjectId: data.subjectId,
+      academicYearId: data.academicYearId
+    })
+    if (!integrity.valid) {
+      throw new MasterDataIntegrityError(integrity.errors[0], integrity.errors)
     }
 
     const now = new Date().toISOString()

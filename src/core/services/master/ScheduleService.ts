@@ -7,6 +7,7 @@
  */
 
 import { repositories } from '../../repositories'
+import { masterDataIntegrityService, MasterDataIntegrityError } from './MasterDataIntegrityService'
 import type {
   ScheduleEntity,
   DayOfWeek,
@@ -293,6 +294,17 @@ export class ScheduleService {
     }
     if (data.periodStart > data.periodEnd) {
       throw new Error('Jam mulai tidak boleh lebih besar dari jam selesai.')
+    }
+
+    const integrity = await masterDataIntegrityService.validateSchedule({
+      teacherAssignmentId: data.teacherAssignmentId,
+      classId: data.classId,
+      roomId: data.roomId,
+      periodStart: Number(data.periodStart),
+      periodEnd: Number(data.periodEnd)
+    })
+    if (!integrity.valid) {
+      throw new MasterDataIntegrityError(integrity.errors[0], integrity.errors)
     }
 
     // Run conflict detection

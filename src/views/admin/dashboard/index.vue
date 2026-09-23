@@ -90,43 +90,49 @@
       </h2>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div
-          class="p-4 rounded-lg bg-slate-50 border border-slate-200 dark:bg-slate-800/40 dark:border-slate-700"
+          class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-1"
         >
           <div class="text-xs font-semibold text-slate-500 dark:text-slate-400"
-            >Jadwal Mengajar Hari Ini</div
+            >Jadwal Hari Ini</div
           >
-          <div class="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1"
-            >{{ operationalMetrics.todayScheduledSessions }} Sesi</div
-          >
-        </div>
-        <div
-          class="p-4 rounded-lg bg-emerald-50 border border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-800"
-        >
-          <div class="text-xs font-semibold text-emerald-700 dark:text-emerald-400"
-            >Presensi Hari Ini Terisi</div
-          >
-          <div class="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-1"
-            >{{ operationalMetrics.todayAttendanceSubmitted }} Sesi</div
+          <div
+            class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono"
+            >{{ operationalMetrics.todayScheduledSessions }}
+            <span class="text-xs font-normal text-slate-500">Sesi</span></div
           >
         </div>
         <div
-          class="p-4 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-950/40 dark:border-blue-800"
+          class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-1"
         >
-          <div class="text-xs font-semibold text-blue-700 dark:text-blue-400"
-            >Jurnal Hari Ini Terisi</div
+          <div class="text-xs font-semibold text-slate-500 dark:text-slate-400"
+            >Presensi Terisi</div
           >
-          <div class="text-2xl font-bold text-blue-800 dark:text-blue-300 mt-1"
-            >{{ operationalMetrics.todayJournalsSubmitted }} Sesi</div
+          <div
+            class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono"
+            >{{ operationalMetrics.todayAttendanceSubmitted }}
+            <span class="text-xs font-normal text-slate-500">Sesi</span></div
           >
         </div>
         <div
-          class="p-4 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/40 dark:border-amber-800"
+          class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-1"
         >
-          <div class="text-xs font-semibold text-amber-700 dark:text-amber-400"
-            >Queue Antrean Sync</div
+          <div class="text-xs font-semibold text-slate-500 dark:text-slate-400">Jurnal Terisi</div>
+          <div
+            class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono"
+            >{{ operationalMetrics.todayJournalsSubmitted }}
+            <span class="text-xs font-normal text-slate-500">Sesi</span></div
           >
-          <div class="text-2xl font-bold text-amber-800 dark:text-amber-300 mt-1"
-            >{{ operationalMetrics.pendingSyncCount }} Item</div
+        </div>
+        <div
+          class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-1"
+        >
+          <div class="text-xs font-semibold text-slate-500 dark:text-slate-400"
+            >Queue Sinkronisasi</div
+          >
+          <div
+            class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono"
+            >{{ operationalMetrics.pendingSyncCount }}
+            <span class="text-xs font-normal text-slate-500">Item</span></div
           >
         </div>
       </div>

@@ -87,89 +87,99 @@
         </div>
       </div>
 
-      <ElTable :data="filteredStudents" v-loading="loading" stripe style="width: 100%">
-        <ElTableColumn label="No" width="60" align="center">
-          <template #default="{ $index }">
-            <span class="text-xs text-gray-500">{{ $index + 1 }}</span>
-          </template>
-        </ElTableColumn>
+      <ArtSkeleton
+        :loading="loading && students.length === 0"
+        type="table"
+        :rows="8"
+        :columns="7"
+        :column-widths="['60px', '160px', '220px', '160px', '120px', '150px', '180px']"
+        :avatar-columns="[3]"
+        :badge-columns="[4, 5]"
+      >
+        <ElTable :data="filteredStudents" v-loading="loading" stripe style="width: 100%">
+          <ElTableColumn label="No" width="60" align="center">
+            <template #default="{ $index }">
+              <span class="text-xs text-gray-500">{{ $index + 1 }}</span>
+            </template>
+          </ElTableColumn>
 
-        <ElTableColumn label="NIS / NISN" width="160">
-          <template #default="{ row }">
-            <div class="text-xs">
-              <div class="font-mono font-bold text-gray-800 dark:text-gray-200">
-                NIS: {{ row.nis }}
+          <ElTableColumn label="NIS / NISN" width="160">
+            <template #default="{ row }">
+              <div class="text-xs">
+                <div class="font-mono font-bold text-gray-800 dark:text-gray-200">
+                  NIS: {{ row.nis }}
+                </div>
+                <div class="text-gray-400">NISN: {{ row.nisn || '-' }}</div>
               </div>
-              <div class="text-gray-400">NISN: {{ row.nisn || '-' }}</div>
-            </div>
-          </template>
-        </ElTableColumn>
+            </template>
+          </ElTableColumn>
 
-        <ElTableColumn prop="name" label="Nama Siswa" min-width="220">
-          <template #default="{ row }">
-            <div>
-              <div class="font-semibold text-gray-900 dark:text-gray-100">{{ row.name }}</div>
-              <div class="text-xs text-gray-400">
-                {{ row.gender === 'L' ? 'Laki-laki (L)' : 'Perempuan (P)' }}
+          <ElTableColumn prop="name" label="Nama Siswa" min-width="220">
+            <template #default="{ row }">
+              <div>
+                <div class="font-semibold text-gray-900 dark:text-gray-100">{{ row.name }}</div>
+                <div class="text-xs text-gray-400">
+                  {{ row.gender === 'L' ? 'Laki-laki (L)' : 'Perempuan (P)' }}
+                </div>
               </div>
-            </div>
-          </template>
-        </ElTableColumn>
+            </template>
+          </ElTableColumn>
 
-        <ElTableColumn label="Kelas / Rombel" min-width="160">
-          <template #default="{ row }">
-            <ElTag size="small" type="primary">{{ getClassName(row.classId) }}</ElTag>
-          </template>
-        </ElTableColumn>
+          <ElTableColumn label="Kelas / Rombel" min-width="160">
+            <template #default="{ row }">
+              <ElTag size="small" type="primary">{{ getClassName(row.classId) }}</ElTag>
+            </template>
+          </ElTableColumn>
 
-        <ElTableColumn prop="status" label="Status" width="120">
-          <template #default="{ row }">
-            <ElTag
-              size="small"
-              :type="
-                row.status === 'ACTIVE'
-                  ? 'success'
-                  : row.status === 'MUTATION'
-                    ? 'warning'
-                    : row.status === 'GRADUATED'
-                      ? 'primary'
-                      : 'danger'
-              "
-            >
-              {{
-                row.status === 'ACTIVE'
-                  ? 'Aktif'
-                  : row.status === 'MUTATION'
-                    ? 'Mutasi'
-                    : row.status === 'GRADUATED'
-                      ? 'Lulus'
-                      : 'Nonaktif'
-              }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
+          <ElTableColumn prop="status" label="Status" width="120">
+            <template #default="{ row }">
+              <ElTag
+                size="small"
+                :type="
+                  row.status === 'ACTIVE'
+                    ? 'success'
+                    : row.status === 'MUTATION'
+                      ? 'warning'
+                      : row.status === 'GRADUATED'
+                        ? 'primary'
+                        : 'danger'
+                "
+              >
+                {{
+                  row.status === 'ACTIVE'
+                    ? 'Aktif'
+                    : row.status === 'MUTATION'
+                      ? 'Mutasi'
+                      : row.status === 'GRADUATED'
+                        ? 'Lulus'
+                        : 'Nonaktif'
+                }}
+              </ElTag>
+            </template>
+          </ElTableColumn>
 
-        <ElTableColumn prop="parentPhone" label="Kontak Wali" min-width="150">
-          <template #default="{ row }">
-            <span class="text-xs text-gray-600 dark:text-gray-400">{{
-              row.parentPhone || '-'
-            }}</span>
-          </template>
-        </ElTableColumn>
+          <ElTableColumn prop="parentPhone" label="Kontak Wali" min-width="150">
+            <template #default="{ row }">
+              <span class="text-xs text-gray-600 dark:text-gray-400">{{
+                row.parentPhone || '-'
+              }}</span>
+            </template>
+          </ElTableColumn>
 
-        <ElTableColumn label="Aksi" width="180" fixed="right">
-          <template #default="{ row }">
-            <div class="flex items-center gap-2">
-              <ElButton size="small" type="primary" link @click="openEditModal(row as any)">
-                Edit
-              </ElButton>
-              <ElButton size="small" type="warning" link @click="openStatusModal(row as any)">
-                Ubah Status
-              </ElButton>
-            </div>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+          <ElTableColumn label="Aksi" width="180" fixed="right">
+            <template #default="{ row }">
+              <div class="flex items-center gap-2">
+                <ElButton size="small" type="primary" link @click="openEditModal(row as any)">
+                  Edit
+                </ElButton>
+                <ElButton size="small" type="warning" link @click="openStatusModal(row as any)">
+                  Ubah Status
+                </ElButton>
+              </div>
+            </template>
+          </ElTableColumn>
+        </ElTable>
+      </ArtSkeleton>
     </div>
 
     <!-- Create / Edit Modal -->
@@ -280,7 +290,7 @@
 
   const students = ref<StudentEntity[]>([])
   const classes = ref<ClassEntity[]>([])
-  const loading = ref(false)
+  const loading = ref(true)
   const saving = ref(false)
   const searchQuery = ref('')
   const filterClass = ref<string>('')

@@ -8,6 +8,8 @@ import type { IRepository, QueryFilter } from '../interfaces/IRepository'
 
 export class BaseIndexedDbRepository<T extends { id: string }> implements IRepository<T> {
   protected storeName: string
+  protected memoryCache: Map<string, T> = new Map()
+  protected isCacheLoaded = false
 
   constructor(storeName: string) {
     this.storeName = storeName
@@ -23,20 +25,76 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
   }
 
   public async findById(id: string): Promise<T | null> {
+    if (this.isCacheLoaded && this.memoryCache.has(id)) {
+      return this.memoryCache.get(id) || null
+    }
+
     const { store } = await this.getStore('readonly')
     return new Promise((resolve, reject) => {
       const request = store.get(id)
-      request.onsuccess = () => resolve((request.result as T) || null)
+      request.onsuccess = () => {
+        const item = (request.result as T) || null
+        if (item) {
+          this.memoryCache.set(item.id, item)
+        }
+        resolve(item)
+      }
       request.onerror = () => reject(request.error)
     })
   }
 
   public async findAll(filter?: QueryFilter<T>): Promise<T[]> {
+    if (this.isCacheLoaded) {
+      let results = Array.from(this.memoryCache.values())
+
+      if (filter?.where) {
+        if (typeof filter.where === 'function') {
+          results = results.filter(filter.where)
+        } else {
+          const whereObj = filter.where as Record<string, unknown>
+          results = results.filter((item) => {
+            const itemObj = item as Record<string, unknown>
+            return Object.entries(whereObj).every(([k, v]) => itemObj[k] === v)
+          })
+        }
+      }
+
+      if (filter?.orderBy) {
+        const key = filter.orderBy as string
+        const direction = filter.orderDirection === 'desc' ? -1 : 1
+        results.sort((a, b) => {
+          const valA = (a as Record<string, unknown>)[key]
+          const valB = (b as Record<string, unknown>)[key]
+          if (valA === valB) return 0
+          if (valA === undefined || valA === null) return 1
+          if (valB === undefined || valB === null) return -1
+          return (valA as number) > (valB as number) ? direction : -direction
+        })
+      }
+
+      if (filter?.offset || filter?.limit) {
+        const offset = filter.offset || 0
+        const limit = filter.limit !== undefined ? offset + filter.limit : undefined
+        results = results.slice(offset, limit)
+      }
+
+      return results
+    }
+
     const { store } = await this.getStore('readonly')
     return new Promise((resolve, reject) => {
       const request = store.getAll()
       request.onsuccess = () => {
-        let results = (request.result as T[]) || []
+        const rawResults = (request.result as T[]) || []
+        this.memoryCache.clear()
+        for (const item of rawResults) {
+          if (item?.id) {
+            this.memoryCache.set(item.id, item)
+          }
+        }
+        this.isCacheLoaded = true
+
+        let results = [...rawResults]
 
         if (filter?.where) {
           if (typeof filter.where === 'function') {
@@ -76,6 +134,15 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
   }
 
   public async findByIndex(indexName: string, value: IDBValidKey | IDBKeyRange): Promise<T[]> {
+    if (this.isCacheLoaded && typeof value !== 'object') {
+      const results = Array.from(this.memoryCache.values()).filter(
+        (item) => (item as Record<string, unknown>)[indexName] === value
+      )
+      if (results.length > 0 || this.memoryCache.size > 0) {
+        return results
+      }
+    }
+
     const { store } = await this.getStore('readonly')
     return new Promise((resolve, reject) => {
       if (!store.indexNames.contains(indexName)) {
@@ -84,12 +151,25 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
       }
       const index = store.index(indexName)
       const request = index.getAll(value)
-      request.onsuccess = () => resolve((request.result as T[]) || [])
+      request.onsuccess = () => {
+        const items = (request.result as T[]) || []
+        items.forEach((item) => {
+          if (item?.id) this.memoryCache.set(item.id, item)
+        })
+        resolve(items)
+      }
       request.onerror = () => reject(request.error)
     })
   }
 
   public async findOneByIndex(indexName: string, value: IDBValidKey): Promise<T | null> {
+    if (this.isCacheLoaded) {
+      const match = Array.from(this.memoryCache.values()).find(
+        (item) => (item as Record<string, unknown>)[indexName] === value
+      )
+      if (match) return match
+    }
+
     const { store } = await this.getStore('readonly')
     return new Promise((resolve, reject) => {
       if (!store.indexNames.contains(indexName)) {
@@ -98,7 +178,13 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
       }
       const index = store.index(indexName)
       const request = index.get(value)
-      request.onsuccess = () => resolve((request.result as T) || null)
+      request.onsuccess = () => {
+        const item = (request.result as T) || null
+        if (item) {
+          this.memoryCache.set(item.id, item)
+        }
+        resolve(item)
+      }
       request.onerror = () => reject(request.error)
     })
   }
@@ -116,9 +202,19 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
         createdAt: (entity as { createdAt?: string }).createdAt || now,
         updatedAt: now
       }
-      const request = store.add(record)
-      request.onsuccess = () => resolve(record)
-      request.onerror = () => reject(request.error)
+      const request = store.put(record)
+      request.onsuccess = () => {
+        this.memoryCache.set(record.id, record)
+        resolve(record)
+      }
+      request.onerror = () => {
+        console.error(
+          `[BaseIndexedDbRepository] store.put error in ${this.storeName}:`,
+          record,
+          request.error
+        )
+        reject(request.error)
+      }
     })
   }
 
@@ -132,7 +228,10 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
     const savedRecords: T[] = []
 
     return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve(savedRecords)
+      tx.oncomplete = () => {
+        savedRecords.forEach((r) => this.memoryCache.set(r.id, r))
+        resolve(savedRecords)
+      }
       tx.onerror = () => reject(tx.error)
       tx.onabort = () =>
         reject(new Error(`Transaction aborted for batch create in ${this.storeName}`))
@@ -143,7 +242,23 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
           createdAt: (entity as { createdAt?: string }).createdAt || now,
           updatedAt: now
         }
-        store.put(record)
+        try {
+          const req = store.put(record)
+          req.onerror = () => {
+            console.error(
+              `[BaseIndexedDbRepository] Failed put in ${this.storeName}:`,
+              record,
+              req.error
+            )
+          }
+        } catch (err) {
+          console.error(
+            `[BaseIndexedDbRepository] Exception putting in ${this.storeName}:`,
+            record,
+            err
+          )
+          throw err
+        }
         savedRecords.push(record)
       }
     })
@@ -169,7 +284,10 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
           updatedAt: new Date().toISOString()
         }
         const putReq = store.put(updated)
-        putReq.onsuccess = () => resolve(updated)
+        putReq.onsuccess = () => {
+          this.memoryCache.set(id, updated)
+          resolve(updated)
+        }
         putReq.onerror = () => reject(putReq.error)
       }
       getReq.onerror = () => reject(getReq.error)
@@ -190,7 +308,10 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
         updatedAt: now
       } as T
       const request = store.put(record)
-      request.onsuccess = () => resolve(record)
+      request.onsuccess = () => {
+        this.memoryCache.set(record.id, record)
+        resolve(record)
+      }
       request.onerror = () => reject(request.error)
     })
   }
@@ -199,12 +320,18 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
     const { store } = await this.getStore('readwrite')
     return new Promise((resolve, reject) => {
       const request = store.delete(id)
-      request.onsuccess = () => resolve(true)
+      request.onsuccess = () => {
+        this.memoryCache.delete(id)
+        resolve(true)
+      }
       request.onerror = () => reject(request.error)
     })
   }
 
   public async count(filter?: QueryFilter<T>): Promise<number> {
+    if (!filter && this.isCacheLoaded) {
+      return this.memoryCache.size
+    }
     if (!filter) {
       const { store } = await this.getStore('readonly')
       return new Promise((resolve, reject) => {
@@ -221,7 +348,10 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
     const { store } = await this.getStore('readwrite')
     return new Promise((resolve, reject) => {
       const request = store.clear()
-      request.onsuccess = () => resolve()
+      request.onsuccess = () => {
+        this.memoryCache.clear()
+        resolve()
+      }
       request.onerror = () => reject(request.error)
     })
   }

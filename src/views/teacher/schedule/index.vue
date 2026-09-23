@@ -738,7 +738,7 @@
   defineOptions({ name: 'TeacherSchedule' })
 
   const router = useRouter()
-  const loading = ref(false)
+  const loading = ref(true)
   const errorMessage = ref('')
   const teacherName = ref('')
   const academicYearName = ref('')

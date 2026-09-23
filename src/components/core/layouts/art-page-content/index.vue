@@ -15,26 +15,11 @@
     </div>
 
     <RouterView v-if="isRefresh" v-slot="{ Component, route }" :style="contentStyle">
-      <!-- 缓存路由动画 -->
       <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in" appear>
-        <KeepAlive :max="10" :exclude="keepAliveExclude">
-          <component
-            class="art-page-view"
-            :is="Component"
-            :key="route.path"
-            v-if="route.meta.keepAlive"
-          />
+        <KeepAlive v-if="route.meta?.keepAlive" :max="60" :exclude="keepAliveExclude">
+          <component class="art-page-view" :is="Component" :key="route.fullPath" />
         </KeepAlive>
-      </Transition>
-
-      <!-- 非缓存路由动画 -->
-      <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in" appear>
-        <component
-          class="art-page-view"
-          :is="Component"
-          :key="route.path"
-          v-if="!route.meta.keepAlive"
-        />
+        <component v-else class="art-page-view" :is="Component" :key="route.fullPath" />
       </Transition>
     </RouterView>
 
@@ -48,7 +33,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { ref, shallowRef, computed, watch } from 'vue'
+  import { ref, shallowRef, computed, watch, onMounted, nextTick } from 'vue'
   import type { CSSProperties } from 'vue'
   import { useRoute } from 'vue-router'
   import { storeToRefs } from 'pinia'

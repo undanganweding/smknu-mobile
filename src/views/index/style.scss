@@ -24,7 +24,8 @@
       width: 100%;
     }
 
-    #app-content {
+    #app-content,
+    #app-content-body {
       flex: 1;
 
       :deep(.layout-content) {

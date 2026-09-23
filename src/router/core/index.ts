@@ -6,7 +6,7 @@
  */
 
 export { RouteRegistry } from './RouteRegistry'
-export { ComponentLoader } from './ComponentLoader'
+export { ComponentLoader, componentLoader } from './ComponentLoader'
 export { RouteValidator } from './RouteValidator'
 export { RouteTransformer } from './RouteTransformer'
 export { IframeRouteManager } from './IframeRouteManager'

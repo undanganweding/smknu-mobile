@@ -725,7 +725,7 @@
   const router = useRouter()
 
   // State
-  const loading = ref(false)
+  const loading = ref(true)
   const errorMessage = ref('')
   const teacherName = ref('')
   const allAssessments = ref<ResolvedAssessmentItem[]>([])

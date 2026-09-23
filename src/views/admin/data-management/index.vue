@@ -87,6 +87,9 @@
                 <ElButton size="small" type="success" plain @click="downloadTemplate('XLSX')">
                   <i class="ri-file-excel-line mr-1"></i> Template XLSX
                 </ElButton>
+                <ElButton size="small" type="danger" plain @click="downloadDokumen1Template('PDF')">
+                  <i class="ri-file-pdf-line mr-1"></i> Template Dokumen 1 (PDF)
+                </ElButton>
               </div>
             </div>
 
@@ -97,20 +100,25 @@
                 action=""
                 :auto-upload="false"
                 :show-file-list="false"
-                accept=".csv, .xlsx, .xls"
+                accept=".pdf, .csv, .xlsx, .xls"
                 @change="handleFileUpload"
               >
                 <i class="ri-upload-cloud-2-line text-4xl text-slate-400"></i>
                 <div class="el-upload__text text-slate-600 mt-2">
-                  Drop file excel / CSV di sini atau <em>klik untuk memilih file</em>
+                  Drop file PDF Dokumen 1 / Excel / CSV di sini atau
+                  <em>klik untuk memilih file</em>
                 </div>
                 <template #tip>
                   <div class="el-upload__tip text-slate-400">
-                    File didukung: .csv, .xlsx (Maksimal 10.000 baris per file)
+                    File didukung: .pdf (Dokumen 1 resmi), .xlsx, .csv (Maksimal 10.000 baris per
+                    file)
                   </div>
                 </template>
               </ElUpload>
             </div>
+
+            <!-- Google Sheets Master Data Importer -->
+            <GoogleSheetsImportSection class="mt-6" />
           </ElCard>
 
           <!-- Preview & Validation Results -->
@@ -967,6 +975,7 @@
   import {
     importService,
     exportService,
+    dokumen1ExportService,
     bulkService,
     backupService,
     type MasterEntityType,
@@ -979,6 +988,7 @@
   import { googleWorkspaceService } from '@/core/services/sync/GoogleWorkspaceService'
   import { repositories } from '@/core/repositories'
   import type { ClassEntity, StudentEntity, AcademicYearEntity } from '@/core/types'
+  import GoogleSheetsImportSection from './components/GoogleSheetsImportSection.vue'
 
   const activeTab = ref('import')
 
@@ -1064,12 +1074,66 @@
     }
   }
 
+  async function downloadDokumen1Template(format: 'PDF' | 'XLSX') {
+    try {
+      if (format === 'PDF') {
+        await dokumen1ExportService.exportToPdf()
+      } else {
+        await dokumen1ExportService.exportToXlsx()
+      }
+      ElMessage.success(`Template Dokumen 1 ${format} berhasil diunduh.`)
+    } catch (err: any) {
+      ElMessage.error(`Gagal mengunduh template Dokumen 1: ${err.message}`)
+    }
+  }
+
   async function handleFileUpload(uploadFile: any) {
     try {
       const rawFile = uploadFile.raw
       if (!rawFile) return
 
       const arrayBuffer = await rawFile.arrayBuffer()
+      const isPdf = rawFile.name.toLowerCase().endsWith('.pdf')
+
+      if (isPdf) {
+        ElMessage.info(`Membaca dan memproses PDF Dokumen 1 (${rawFile.name})...`)
+        const dokResult = await importService.parseAndPreviewDokumen1(arrayBuffer, rawFile.name)
+        if (!dokResult.success || dokResult.rows.length === 0) {
+          ElMessage.warning('Tidak dapat mendeteksi baris tabel Dokumen 1 dari file PDF.')
+          return
+        }
+
+        previewResult.value = {
+          entityType: 'TEACHER',
+          filename: rawFile.name,
+          totalRows: dokResult.rows.length,
+          validCount: dokResult.rows.length,
+          warningCount: 0,
+          errorCount: 0,
+          duplicateCount: 0,
+          headers: ['NO', 'KODE', 'NAMA GURU', 'MATA PELAJARAN', 'BEBAN JP'],
+          unrecognizedHeaders: [],
+          missingRequiredHeaders: [],
+          rows: dokResult.rows.map((row, idx) => ({
+            rowNumber: idx + 1,
+            rawData: row,
+            normalizedData: {
+              code: row.code,
+              name: row.cleanTeacherName || row.teacherName,
+              subject: row.subjectName,
+              weekly_jp: row.hours
+            },
+            status: 'VALID',
+            errors: [],
+            warnings: []
+          }))
+        }
+        ElMessage.success(
+          `Dokumen 1 PDF berhasil dimuat (${dokResult.rows.length} baris guru & SK mengajar).`
+        )
+        return
+      }
+
       const rawRows = importService.parseFileContent(arrayBuffer, rawFile.name)
 
       if (rawRows.length === 0) {
@@ -1116,6 +1180,18 @@
       )
 
       isSubmittingImport.value = true
+
+      // Check if it's a Dokumen 1 payload (has rawData.code & rawData.teacherName)
+      const firstRow = previewResult.value.rows[0]?.rawData as any
+      if (firstRow && firstRow.code && (firstRow.teacherName || firstRow.name)) {
+        const dokRows = previewResult.value.rows.map((r) => r.rawData as any)
+        const result = await importService.commitDokumen1(dokRows, previewResult.value.filename)
+        ElMessage.success(result.message)
+        previewResult.value = null
+        await loadImportHistory()
+        return
+      }
+
       const result = await importService.commitImport({
         preview: previewResult.value,
         commitMode: commitMode.value,

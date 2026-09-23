@@ -1,4 +1,5 @@
 import { AppRouteRecordRaw } from '@/utils/router'
+import AppLayout from '@/views/index/index.vue'
 
 /**
  * 静态路由配置（不需要权限就能访问的路由）
@@ -25,10 +26,16 @@ export const staticRoutes: AppRouteRecordRaw[] = [
     meta: { title: 'menus.login.title', isHideTab: true }
   },
   {
+    path: '/login',
+    redirect: '/auth/login'
+  },
+  {
+    path: '/register',
+    redirect: '/auth/login'
+  },
+  {
     path: '/auth/register',
-    name: 'Register',
-    component: () => import('@views/auth/register/index.vue'),
-    meta: { title: 'menus.register.title', isHideTab: true }
+    redirect: '/auth/login'
   },
   {
     path: '/auth/forget-password',
@@ -56,7 +63,7 @@ export const staticRoutes: AppRouteRecordRaw[] = [
   },
   {
     path: '/outside',
-    component: () => import('@views/index/index.vue'),
+    component: AppLayout,
     name: 'Outside',
     meta: { title: 'menus.outside.title' },
     children: [

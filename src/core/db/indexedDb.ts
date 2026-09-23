@@ -6,7 +6,7 @@
  */
 
 export const DB_NAME = 'guru_offline_db'
-export const DB_VERSION = 2
+export const DB_VERSION = 3
 
 export interface StoreIndexConfig {
   name: string
@@ -217,6 +217,54 @@ export const STORE_SCHEMAS: StoreSchemaConfig[] = [
       { name: 'actor', keyPath: 'actor', unique: false },
       { name: 'entityType', keyPath: 'entityType', unique: false }
     ]
+  },
+  {
+    name: 'academic_periods',
+    keyPath: 'id',
+    indexes: [
+      { name: 'academicYearId', keyPath: 'academicYearId', unique: false },
+      { name: 'periodType', keyPath: 'periodType', unique: false },
+      { name: 'semester', keyPath: 'semester', unique: false },
+      { name: 'isLocked', keyPath: 'isLocked', unique: false }
+    ]
+  },
+  {
+    name: 'submissions',
+    keyPath: 'id',
+    indexes: [
+      { name: 'teacherId', keyPath: 'teacherId', unique: false },
+      { name: 'academicPeriodId', keyPath: 'academicPeriodId', unique: false },
+      { name: 'status', keyPath: 'status', unique: false },
+      { name: 'teacher_period', keyPath: ['teacherId', 'academicPeriodId'], unique: true }
+    ]
+  },
+  {
+    name: 'school_agendas',
+    keyPath: 'id',
+    indexes: [
+      { name: 'startDate', keyPath: 'startDate', unique: false },
+      { name: 'category', keyPath: 'category', unique: false },
+      { name: 'targetRole', keyPath: 'targetRole', unique: false }
+    ]
+  },
+  {
+    name: 'pending_mutations',
+    keyPath: 'id',
+    indexes: [
+      { name: 'entity', keyPath: 'entity', unique: false },
+      { name: 'entityId', keyPath: 'entityId', unique: false },
+      { name: 'status', keyPath: 'status', unique: false },
+      { name: 'createdAt', keyPath: 'createdAt', unique: false }
+    ]
+  },
+  {
+    name: 'conflicts',
+    keyPath: 'id',
+    indexes: [
+      { name: 'entity', keyPath: 'entity', unique: false },
+      { name: 'entityId', keyPath: 'entityId', unique: false },
+      { name: 'resolved', keyPath: 'resolved', unique: false }
+    ]
   }
 ]
 
@@ -233,12 +281,19 @@ class IndexedDbManager {
     }
 
     this.initPromise = new Promise<IDBDatabase>((resolve, reject) => {
-      if (typeof window === 'undefined' || !window.indexedDB) {
+      const idb =
+        typeof window !== 'undefined' && window.indexedDB
+          ? window.indexedDB
+          : typeof indexedDB !== 'undefined'
+            ? indexedDB
+            : (globalThis as any).indexedDB
+
+      if (!idb) {
         reject(new Error('IndexedDB is not supported in this environment.'))
         return
       }
 
-      const request = window.indexedDB.open(DB_NAME, DB_VERSION)
+      const request = idb.open(DB_NAME, DB_VERSION)
 
       request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
         const db = request.result
@@ -269,14 +324,15 @@ class IndexedDbManager {
       }
 
       request.onsuccess = () => {
-        this.db = request.result
-        this.db.onversionchange = () => {
+        const db = request.result
+        this.db = db
+        db.onversionchange = () => {
           this.db?.close()
           this.db = null
           this.initPromise = null
           console.warn('[IndexedDB] Database version changed elsewhere; closed connection.')
         }
-        resolve(this.db)
+        resolve(db)
       }
 
       request.onerror = () => {
@@ -314,3 +370,4 @@ class IndexedDbManager {
 }
 
 export const dbManager = new IndexedDbManager()
+export const indexedDb = dbManager

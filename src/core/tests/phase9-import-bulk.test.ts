@@ -405,7 +405,12 @@ export async function runPhase9Tests() {
   // -------------------------------------------------------------
   await test('19 & 20. ImportService UPSERT mode updates existing DB entity preserving stable ID', async () => {
     const existingTeachers = await repositories.teachers.findAll()
-    const targetTeacher = existingTeachers[0]
+    const targetTeacher =
+      existingTeachers.find((t) => t.nip && t.nip.trim().length > 0) || existingTeachers[0]
+    if (!targetTeacher.nip) {
+      targetTeacher.nip = '198501012010011001'
+      await repositories.teachers.save(targetTeacher)
+    }
     const originalId = targetTeacher.id
 
     const rawRows = [{ nip: targetTeacher.nip, name: `${targetTeacher.name} (Updated Title)` }]

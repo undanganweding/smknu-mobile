@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-  import type { ComputedRef } from 'vue'
+  import { computed, type ComputedRef } from 'vue'
 
   interface SettingItemConfig {
     key: string

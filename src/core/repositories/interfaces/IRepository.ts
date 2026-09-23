@@ -22,7 +22,9 @@ import type {
   SchoolIdentityEntity,
   SyncQueueEntity,
   ImportHistoryEntity,
-  AuditLogEntity
+  AuditLogEntity,
+  AcademicPeriodEntity,
+  SchoolAgendaEntity
 } from '../../types'
 
 export interface QueryFilter<T> {
@@ -138,4 +140,14 @@ export type IImportHistoryRepository = IRepository<ImportHistoryEntity> & {
 export type IAuditLogRepository = IRepository<AuditLogEntity> & {
   findByAction(action: string): Promise<AuditLogEntity[]>
   findByActor(actor: string): Promise<AuditLogEntity[]>
+}
+
+export type IAcademicPeriodRepository = IRepository<AcademicPeriodEntity> & {
+  findByAcademicYear(academicYearId: string): Promise<AcademicPeriodEntity[]>
+  findActive(): Promise<AcademicPeriodEntity | null>
+}
+
+export type ISchoolAgendaRepository = IRepository<SchoolAgendaEntity> & {
+  findByCategory(category: string): Promise<SchoolAgendaEntity[]>
+  findActive(targetRole?: string): Promise<SchoolAgendaEntity[]>
 }

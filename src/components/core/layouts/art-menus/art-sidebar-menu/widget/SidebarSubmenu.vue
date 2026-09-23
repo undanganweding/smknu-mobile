@@ -1,6 +1,12 @@
 <template>
   <template v-for="(item, index) in filteredMenuItems" :key="getUniqueKey(item, index)">
-    <ElSubMenu v-if="hasChildren(item)" :index="item.path || item.meta.title" :level="level">
+    <ElSubMenu
+      v-if="hasChildren(item)"
+      :index="item.path || item.meta.title"
+      :level="level"
+      @mouseenter="prefetchSubmenu(item)"
+      @focusin="prefetchSubmenu(item)"
+    >
       <template #title>
         <div class="menu-icon flex-cc">
           <ArtSvgIcon
@@ -29,6 +35,9 @@
       :index="isExternalLink(item) ? '' : item.path || item.meta?.title || ''"
       :level-item="level + 1"
       @click="goPage(item)"
+      @mouseenter="prefetchRoute(item)"
+      @touchstart.passive="prefetchRoute(item)"
+      @focusin="prefetchRoute(item)"
     >
       <div class="menu-icon flex-cc">
         <ArtSvgIcon
@@ -63,6 +72,7 @@
   import { formatMenuTitle } from '@/utils/router'
   import { handleMenuJump } from '@/utils/navigation'
   import { useSettingStore } from '@/store/modules/setting'
+  import { componentLoader } from '@/router/core'
 
   interface MenuTheme {
     iconColor?: string
@@ -99,6 +109,28 @@
   const settingStore = useSettingStore()
 
   const { menuOpen } = storeToRefs(settingStore)
+
+  /**
+   * 鼠标悬停或触控时预加载页面组件（零等待秒开）
+   */
+  const prefetchRoute = (item: AppRouteRecord): void => {
+    if (item.component && typeof item.component === 'string') {
+      componentLoader.prefetch(item.component)
+    } else if (item.path && !item.meta?.link) {
+      componentLoader.prefetch(item.path)
+    }
+  }
+
+  /**
+   * 预加载子菜单项的所有页面组件
+   */
+  const prefetchSubmenu = (item: AppRouteRecord): void => {
+    if (item.children && item.children.length > 0) {
+      item.children.forEach((child) => {
+        prefetchRoute(child)
+      })
+    }
+  }
 
   /**
    * 过滤后的菜单项列表

@@ -19,8 +19,10 @@ export type AppRouteRecordRaw = RouteRecordRaw & {
 /** 顶部进度条配置 */
 export const configureNProgress = () => {
   NProgress.configure({
-    easing: 'ease',
-    speed: 600,
+    easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)',
+    speed: 250,
+    trickleSpeed: 100,
+    minimum: 0.15,
     showSpinner: false,
     parent: 'body'
   })

@@ -295,7 +295,24 @@
             </div>
           </div>
 
-          <!-- Field 2: Kegiatan Pembelajaran -->
+          <!-- Field 2: Capaian / Tujuan Pembelajaran (Phase 3) -->
+          <div>
+            <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
+              Tujuan / Capaian Pembelajaran (TP)
+            </label>
+            <ElInput
+              v-model="form.learningOutcome"
+              placeholder="Contoh: Siswa mampu mengkonfigurasi dan memverifikasi routing protokol OSPF..."
+              clearable
+              maxlength="300"
+              show-word-limit
+            />
+            <div class="text-[11px] text-gray-400 mt-1">
+              Target kompetensi atau tujuan pembelajaran yang dicapai pada pertemuan ini (opsional).
+            </div>
+          </div>
+
+          <!-- Field 3: Kegiatan Pembelajaran -->
           <div>
             <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
               Kegiatan / Ringkasan Aktivitas Pembelajaran <span class="text-rose-500">*</span>
@@ -313,7 +330,7 @@
             </div>
           </div>
 
-          <!-- Field 3: Catatan / Keterangan Tambahan -->
+          <!-- Field 4: Catatan / Keterangan Tambahan -->
           <div>
             <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">
               Catatan Pembelajaran / Keterangan Tambahan
@@ -330,18 +347,21 @@
 
           <!-- Actions -->
           <div
-            class="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between"
+            class="pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between flex-wrap gap-3"
           >
             <ElButton plain @click="goToSchedule"> Kembali ke Jadwal </ElButton>
 
             <div class="flex items-center gap-3">
+              <ElButton plain :loading="saving" @click="handleSaveJournal('DRAFT')">
+                <i class="ri-draft-line mr-1"></i> Simpan Draf
+              </ElButton>
               <ElButton
                 type="primary"
                 :loading="saving"
                 class="bg-emerald-600 hover:bg-emerald-700 border-none"
-                @click="handleSaveJournal"
+                @click="handleSaveJournal('COMPLETED')"
               >
-                <i class="ri-save-line mr-1"></i> Simpan Jurnal Mengajar
+                <i class="ri-checkbox-circle-line mr-1"></i> Simpan Selesai
               </ElButton>
             </div>
           </div>
@@ -385,6 +405,7 @@
 
   const form = ref({
     topic: '',
+    learningOutcome: '',
     activitySummary: '',
     notes: ''
   })
@@ -448,6 +469,7 @@
       )
       journalSession.value = data
       form.value.topic = data.topic
+      form.value.learningOutcome = data.learningOutcome || ''
       form.value.activitySummary = data.activitySummary
       form.value.notes = data.notes
     } catch (err: any) {
@@ -467,11 +489,12 @@
     loadJournalSession()
   }
 
-  const handleSaveJournal = async () => {
+  const handleSaveJournal = async (targetStatus: 'DRAFT' | 'COMPLETED' = 'COMPLETED') => {
     if (!selectedScheduleId.value) return
 
     const topic = form.value.topic.trim()
     const activity = form.value.activitySummary.trim()
+    const outcome = form.value.learningOutcome.trim()
 
     if (!topic) {
       ElMessage.warning('Materi / Topik pembelajaran wajib diisi.')
@@ -489,6 +512,8 @@
         date: selectedDate.value,
         topic,
         activitySummary: activity,
+        learningOutcome: outcome,
+        status: targetStatus,
         notes: form.value.notes
       })
 
@@ -496,11 +521,16 @@
         journalSession.value.journalId = res.journal.id
         journalSession.value.isExisting = true
         journalSession.value.topic = res.journal.topic
+        journalSession.value.learningOutcome = res.journal.learningOutcome || ''
         journalSession.value.activitySummary = res.journal.activitySummary
         journalSession.value.notes = res.journal.notes || ''
       }
 
-      ElMessage.success('Jurnal Agenda Pembelajaran berhasil disimpan.')
+      ElMessage.success(
+        targetStatus === 'DRAFT'
+          ? 'Draf jurnal berhasil disimpan.'
+          : 'Jurnal Agenda Pembelajaran berhasil disimpan.'
+      )
     } catch (err: any) {
       console.warn('[TeacherJournal] Error saving journal:', err)
       ElMessage.error(err?.message || 'Gagal menyimpan jurnal pembelajaran.')

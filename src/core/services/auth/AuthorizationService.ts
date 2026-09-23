@@ -5,7 +5,7 @@
  */
 
 import { authService } from './AuthService'
-import type { SessionData, UserRole } from '../../types'
+import type { SessionData, UserRole, UserIdentity } from '../../types'
 
 export class AuthorizationError extends Error {
   constructor(message = 'Akses Ditolak: Anda tidak memiliki wewenang untuk tindakan ini.') {
@@ -22,6 +22,13 @@ export class AuthorizationService {
       AuthorizationService.instance = new AuthorizationService()
     }
     return AuthorizationService.instance
+  }
+
+  /**
+   * Get active user identity if available
+   */
+  public getCurrentIdentity(): UserIdentity | null {
+    return authService.getCurrentIdentity()
   }
 
   /**
@@ -73,6 +80,76 @@ export class AuthorizationService {
   public hasRole(role: UserRole): boolean {
     const session = authService.getCurrentSession()
     return !!session && session.role === role
+  }
+
+  /**
+   * Check if current user has permission string (e.g. 'admin:all', 'teacher:operational:write')
+   */
+  public can(permission: string): boolean {
+    const session = authService.getCurrentSession()
+    if (!session) return false
+
+    // ADMIN has superuser permission
+    if (session.role === 'ADMIN') return true
+
+    // Check canonical identity permissions list
+    const identity = session.identity || authService.getCurrentIdentity()
+    if (identity && identity.permissions) {
+      if (identity.permissions.includes(permission)) return true
+      if (identity.permissions.includes('admin:all')) return true
+      if (identity.permissions.includes('teacher:all') && permission.startsWith('teacher:')) {
+        return true
+      }
+      return false
+    }
+
+    // Default permission mappings if identity not yet restored
+    if (session.role === 'GURU') {
+      return permission.startsWith('teacher:')
+    }
+
+    return false
+  }
+
+  /**
+   * Verify if current user can access a route path
+   */
+  public canAccessRoute(routePath: string): boolean {
+    const session = authService.getCurrentSession()
+    if (!session) {
+      // Only public routes
+      return routePath === '/auth/login' || routePath === '/login' || routePath.startsWith('/auth/')
+    }
+
+    if (routePath.startsWith('/admin')) {
+      return session.role === 'ADMIN'
+    }
+
+    if (routePath.startsWith('/teacher') || routePath.startsWith('/guru')) {
+      return session.role === 'GURU'
+    }
+
+    return true
+  }
+
+  /**
+   * Check resource ownership / access capability
+   * Ensures Guru can only access operational data owned by their assigned teacherId
+   */
+  public canAccessResource(resource: string, ownerTeacherId?: string): boolean {
+    const session = authService.getCurrentSession()
+    if (!session) return false
+
+    // Admin has access to all resources
+    if (session.role === 'ADMIN') return true
+
+    // Guru can only access if teacherId matches or no specific owner specified
+    if (session.role === 'GURU') {
+      if (!ownerTeacherId) return true
+      return session.teacherId === ownerTeacherId
+    }
+
+    return false
   }
 
   /**

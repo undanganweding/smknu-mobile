@@ -617,7 +617,7 @@
   const router = useRouter()
 
   // State
-  const loadingData = ref(false)
+  const loadingData = ref(true)
   const errorMessage = ref('')
   const currentSession = ref<SessionData | null>(null)
   const teacherName = computed(

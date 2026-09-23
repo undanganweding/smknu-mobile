@@ -1,7 +1,7 @@
 <!-- 布局容器 -->
 <template>
   <div class="app-layout">
-    <aside id="app-sidebar">
+    <aside id="app-sidebar" aria-label="Menu Navigasi Utama">
       <ArtSidebarMenu />
     </aside>
 

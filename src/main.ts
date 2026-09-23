@@ -9,6 +9,9 @@ import '@utils/sys/console.ts'                      // 控制台输出内容
 import { setupGlobDirectives } from './directives'
 import { setupErrorHandle } from './utils/sys/error-handle'
 import { seedDatabase } from './core/db/seedData'
+import { reloadProtection } from './core/services/sync/ReloadProtection'
+import { realtimeManager } from './core/services/realtime/RealtimeManager'
+import { syncEngine } from './core/services/sync/SyncEngine'
 
 document.addEventListener(
   'touchstart',
@@ -23,9 +26,18 @@ setupGlobDirectives(app)
 setupErrorHandle(app)
 
 // Initialize Guru Offline Core Database (IndexedDB)
-seedDatabase().catch((err) => {
-  console.error('[GuruOffline] Database bootstrap error:', err)
-})
+seedDatabase()
+  .then(() => {
+    // Install reload & tab close protection for unsynced mutations
+    reloadProtection.install()
+    // Initialize Supabase Realtime subscriptions
+    realtimeManager.init()
+    // Process initial pending mutations if online
+    syncEngine.processQueue().catch(() => {})
+  })
+  .catch((err) => {
+    console.error('[GuruOffline] Database bootstrap error:', err)
+  })
 
 app.use(language)
 app.mount('#app')

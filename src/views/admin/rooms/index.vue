@@ -184,7 +184,7 @@
   import type { FormInstance, FormRules } from 'element-plus'
 
   const rooms = ref<RoomEntity[]>([])
-  const loading = ref(false)
+  const loading = ref(true)
   const saving = ref(false)
   const searchQuery = ref('')
   const filterType = ref<string>('')

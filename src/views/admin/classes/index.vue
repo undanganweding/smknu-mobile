@@ -189,7 +189,7 @@
   const classes = ref<ClassEntity[]>([])
   const majors = ref<MajorEntity[]>([])
   const teachers = ref<TeacherEntity[]>([])
-  const loading = ref(false)
+  const loading = ref(true)
   const saving = ref(false)
   const searchQuery = ref('')
   const filterLevel = ref<string>('')

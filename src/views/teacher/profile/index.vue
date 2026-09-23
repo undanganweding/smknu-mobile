@@ -13,10 +13,10 @@
     <!-- Identity Overview Card -->
     <div class="art-card p-6">
       <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <i class="ri-user-3-line text-emerald-600"></i> Identitas Pengajar
+        <i class="ri-user-3-line text-emerald-600"></i> Identitas & Data Pengajar
       </h2>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
         <div
           class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800"
         >
@@ -29,9 +29,9 @@
         <div
           class="p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-800"
         >
-          <div class="text-xs text-gray-500 dark:text-gray-400">Username Akun</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400">NIP / NUPTK</div>
           <div class="text-base font-semibold text-gray-900 dark:text-gray-100 mt-1">
-            {{ currentSession?.username || '-' }}
+            {{ teacher?.nip || teacher?.nuptk || '-' }}
           </div>
         </div>
 
@@ -52,6 +52,52 @@
             AKTIF
           </div>
         </div>
+      </div>
+
+      <div class="border-t border-gray-100 dark:border-gray-800 pt-5">
+        <h3
+          class="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-1.5"
+        >
+          <i class="ri-edit-line text-primary"></i> Data Kontak Guru (Dapat Diperbarui)
+        </h3>
+
+        <ElForm
+          ref="contactFormRef"
+          :model="contactForm"
+          label-position="top"
+          class="grid grid-cols-1 sm:grid-cols-2 gap-4"
+        >
+          <ElFormItem label="Nomor Telepon / WhatsApp" prop="phone">
+            <ElInput
+              v-model.trim="contactForm.phone"
+              placeholder="Contoh: 08123456789"
+              prefix-icon="ri-phone-line"
+            />
+          </ElFormItem>
+
+          <ElFormItem label="Email Pribadi / Sekolah" prop="email">
+            <ElInput
+              v-model.trim="contactForm.email"
+              placeholder="Contoh: nama@smknuungaran.sch.id"
+              prefix-icon="ri-mail-line"
+            />
+          </ElFormItem>
+
+          <ElFormItem label="Alamat Domisili" prop="address" class="sm:col-span-2">
+            <ElInput
+              v-model.trim="contactForm.address"
+              type="textarea"
+              :rows="2"
+              placeholder="Alamat tempat tinggal"
+            />
+          </ElFormItem>
+
+          <div class="sm:col-span-2">
+            <ElButton type="primary" :loading="savingContact" @click="handleSaveContact">
+              <i class="ri-save-line mr-1"></i> Simpan Data Kontak
+            </ElButton>
+          </div>
+        </ElForm>
       </div>
     </div>
 
@@ -120,7 +166,15 @@
   const currentSession = ref<SessionData | null>(null)
   const teacher = ref<TeacherEntity | null>(null)
   const saving = ref(false)
+  const savingContact = ref(false)
   const passwordFormRef = ref<FormInstance>()
+  const contactFormRef = ref<FormInstance>()
+
+  const contactForm = reactive({
+    phone: '',
+    email: '',
+    address: ''
+  })
 
   const passwordForm = reactive({
     currentPassword: '',
@@ -157,11 +211,34 @@
       try {
         const t = await repositories.teachers.findById(currentSession.value.teacherId)
         teacher.value = t || null
+        if (t) {
+          contactForm.phone = t.phone || ''
+          contactForm.email = t.email || ''
+          contactForm.address = t.address || ''
+        }
       } catch (err) {
         console.warn('[TeacherProfile] Error loading teacher details:', err)
       }
     }
   })
+
+  const handleSaveContact = async () => {
+    if (!teacher.value?.id) return
+    savingContact.value = true
+    try {
+      await repositories.teachers.update(teacher.value.id, {
+        phone: contactForm.phone,
+        email: contactForm.email,
+        address: contactForm.address,
+        updatedAt: new Date().toISOString()
+      })
+      ElMessage.success('Data kontak guru berhasil diperbarui.')
+    } catch (err: any) {
+      ElMessage.error(err?.message || 'Gagal menyimpan data kontak.')
+    } finally {
+      savingContact.value = false
+    }
+  }
 
   const handleChangePassword = async () => {
     if (!passwordFormRef.value || !currentSession.value) return

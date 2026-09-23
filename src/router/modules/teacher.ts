@@ -18,7 +18,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Dashboard Guru',
         icon: 'ri:dashboard-line',
         roles: ['GURU'],
-        keepAlive: false,
+        keepAlive: true,
         fixedTab: true
       }
     },
@@ -30,7 +30,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Jadwal Mengajar',
         icon: 'ri:calendar-schedule-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -41,7 +41,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Presensi Siswa',
         icon: 'ri:user-follow-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -52,7 +52,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Jurnal Mengajar',
         icon: 'ri:book-read-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -63,7 +63,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Penilaian Siswa',
         icon: 'ri:file-list-3-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -74,7 +74,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Buku Pelanggaran & Prestasi',
         icon: 'ri:shield-user-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -85,7 +85,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Rekap & Laporan Saya',
         icon: 'ri:file-chart-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -96,7 +96,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Cetak Rapor Siswa',
         icon: 'ri:article-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -107,7 +107,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Status Sinkronisasi',
         icon: 'ri:refresh-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -118,7 +118,7 @@ export const teacherRoutes: AppRouteRecord = {
         title: 'Profil & Keamanan',
         icon: 'ri:user-settings-line',
         roles: ['GURU'],
-        keepAlive: false
+        keepAlive: true
       }
     }
   ]

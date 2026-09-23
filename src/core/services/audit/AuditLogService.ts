@@ -23,8 +23,8 @@ export class AuditLogService {
    */
   public async log(options: LogAuditOptions): Promise<AuditLogEntity> {
     const session = authService.getCurrentSession()
-    const actor = session ? session.username : 'SYSTEM'
-    const role: UserRole = session ? session.role : 'ADMIN'
+    const actor = (options as any).actor || (session ? session.username : 'SYSTEM')
+    const role: UserRole = (options as any).role || (session ? session.role : 'ADMIN')
 
     const now = new Date().toISOString()
     const auditEntry: AuditLogEntity = {
@@ -45,6 +45,12 @@ export class AuditLogService {
 
     await repositories.auditLogs.save(auditEntry)
     return auditEntry
+  }
+
+  public async recordLog(
+    options: LogAuditOptions & { actor?: string; role?: UserRole }
+  ): Promise<AuditLogEntity> {
+    return this.log(options)
   }
 
   /**

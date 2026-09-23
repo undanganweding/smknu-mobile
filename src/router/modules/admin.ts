@@ -18,7 +18,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Dashboard Admin',
         icon: 'ri:dashboard-line',
         roles: ['ADMIN'],
-        keepAlive: false,
+        keepAlive: true,
         fixedTab: true
       }
     },
@@ -30,7 +30,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Manajemen Akun',
         icon: 'ri:user-settings-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -41,7 +41,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Data Guru',
         icon: 'ri:team-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -52,7 +52,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Mata Pelajaran',
         icon: 'ri:book-open-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -63,7 +63,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Rombongan Belajar',
         icon: 'ri:community-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -74,7 +74,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Ruang & Fasilitas',
         icon: 'ri:building-4-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -85,7 +85,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Data Siswa',
         icon: 'ri:user-follow-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -96,7 +96,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'SK Pembagian Tugas',
         icon: 'ri:file-list-3-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -107,7 +107,40 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Jadwal Pelajaran',
         icon: 'ri:calendar-todo-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
+      }
+    },
+    {
+      path: 'academic-years',
+      name: 'AdminAcademicYears',
+      component: '/admin/academic-years',
+      meta: {
+        title: 'Tahun & Periode',
+        icon: 'ri:calendar-check-line',
+        roles: ['ADMIN'],
+        keepAlive: true
+      }
+    },
+    {
+      path: 'agenda',
+      name: 'AdminAgenda',
+      component: '/admin/agenda',
+      meta: {
+        title: 'Agenda Sekolah',
+        icon: 'ri:calendar-event-line',
+        roles: ['ADMIN'],
+        keepAlive: true
+      }
+    },
+    {
+      path: 'announcements',
+      name: 'AdminAnnouncements',
+      component: '/admin/announcements',
+      meta: {
+        title: 'Pengumuman',
+        icon: 'ri:notification-3-line',
+        roles: ['ADMIN'],
+        keepAlive: true
       }
     },
     {
@@ -118,7 +151,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Laporan & Rekapitulasi',
         icon: 'ri:file-chart-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -129,7 +162,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Manajemen Data & Import',
         icon: 'ri:database-2-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -140,7 +173,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Monitor Sinkronisasi',
         icon: 'ri:refresh-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -151,7 +184,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Ledger Akademik',
         icon: 'ri:file-excel-2-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -162,7 +195,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Tutup Semester',
         icon: 'ri:lock-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     },
     {
@@ -173,7 +206,7 @@ export const adminRoutes: AppRouteRecord = {
         title: 'Pengaturan Sekolah',
         icon: 'ri:settings-4-line',
         roles: ['ADMIN'],
-        keepAlive: false
+        keepAlive: true
       }
     }
   ]

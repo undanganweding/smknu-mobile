@@ -1,5 +1,5 @@
 /**
- * Runner for Phase 5 Real Google Sheets / Apps Script Integration Tests in Node.js
+ * Phase 5 Production Hardening Test Runner
  */
 import 'fake-indexeddb/auto'
 
@@ -25,14 +25,17 @@ if (!globalThis.localStorage) {
   } as any
 }
 
-import { runPhase5Tests } from '../src/core/tests/phase5-cloud-sync.test'
+import { runPhase5ProductionHardeningTests } from '../src/core/tests/phase5-production-hardening.test'
 
-runPhase5Tests()
-  .then(() => {
+async function main() {
+  try {
+    await runPhase5ProductionHardeningTests()
     console.log('Phase 5 test suite completed successfully.')
     process.exit(0)
-  })
-  .catch((err) => {
+  } catch (err) {
     console.error('Phase 5 tests failed:', err)
     process.exit(1)
-  })
+  }
+}
+
+main()

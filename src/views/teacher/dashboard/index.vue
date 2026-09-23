@@ -1,56 +1,140 @@
 <template>
-  <div class="p-5 space-y-5">
-    <!-- Teacher Header Card -->
-    <div class="art-card p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div>
-        <div class="flex items-center gap-2">
-          <span
-            class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+  <div class="p-4 md:p-6 space-y-6">
+    <!-- Active Schedule Alert Banner (If Any) -->
+    <div
+      v-if="activeAlert"
+      class="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-fade-in"
+    >
+      <div class="flex items-center gap-3">
+        <div
+          class="size-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0"
+        >
+          <i
+            :class="
+              activeAlert.type === 'SESSION_STARTED'
+                ? 'ri-alarm-warning-line text-xl'
+                : 'ri-time-line text-xl'
+            "
+          ></i>
+        </div>
+        <div>
+          <div
+            class="font-bold text-sm text-emerald-950 dark:text-emerald-100 flex items-center gap-2"
           >
+            <span>{{ activeAlert.title }}</span>
+            <span
+              v-if="activeAlert.minutesRemaining !== undefined"
+              class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200"
+            >
+              {{ activeAlert.minutesRemaining }} menit lagi
+            </span>
+          </div>
+          <p class="text-xs text-emerald-800 dark:text-emerald-300 mt-0.5">
+            {{ activeAlert.message }}
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        <ElButton
+          type="primary"
+          size="small"
+          class="bg-emerald-600 hover:bg-emerald-700 border-none"
+          @click="goToAttendance(activeAlert.scheduleId)"
+        >
+          <i class="ri-user-follow-line mr-1"></i> Presensi Sesi Ini
+        </ElButton>
+        <ElButton size="small" text @click="dismissAlert"> Tutup </ElButton>
+      </div>
+    </div>
+
+    <!-- Teacher Command Header Card -->
+    <div
+      class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-6"
+    >
+      <div class="space-y-1.5">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span
+            class="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60"
+          >
+            <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             OFFLINE READY
           </span>
           <span
-            class="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-400 border border-teal-200 dark:border-teal-800"
+            class="px-2.5 py-0.5 text-xs font-semibold rounded-md bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
           >
             PORTAL GURU
           </span>
+          <span
+            class="px-2.5 py-0.5 text-xs font-medium rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/60"
+          >
+            SMK NU UNGARAN
+          </span>
         </div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">
+        <h1 class="text-xl md:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           Selamat Datang, {{ teacherName || currentSession?.username }}
         </h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          SMK NU UNGARAN &bull; TP {{ academicYearName || '2026/2027' }} (Semester
+        <p class="text-xs md:text-sm text-slate-500 dark:text-slate-400">
+          {{ formattedTodayDate }} &bull; TP {{ academicYearName || '2026/2027' }} (Semester
           {{ semesterName || 'Ganjil' }})
         </p>
       </div>
 
+      <!-- Quick Action Buttons Header -->
       <div class="flex flex-wrap items-center gap-2">
-        <ElButton type="success" plain @click="goToAttendance()">
-          <i class="ri-user-follow-line mr-1"></i> Presensi Siswa
-        </ElButton>
-        <ElButton type="primary" plain @click="goToJournal()">
-          <i class="ri-book-read-line mr-1"></i> Jurnal Mengajar
-        </ElButton>
-        <ElButton type="warning" plain @click="goToAssessment">
-          <i class="ri-file-list-3-line mr-1"></i> Penilaian
-        </ElButton>
-        <ElButton plain @click="goToSchedule">
-          <i class="ri-calendar-schedule-line mr-1"></i> Jadwal
-        </ElButton>
-        <ElButton plain @click="goToProfile">
-          <i class="ri-user-settings-line mr-1"></i> Profil
-        </ElButton>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-xs transition-all cursor-pointer"
+          @click="handleQuickAttendance"
+        >
+          <i class="ri-user-follow-line text-sm"></i> Presensi
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-all cursor-pointer"
+          @click="handleQuickJournal"
+        >
+          <i class="ri-book-read-line text-sm"></i> Jurnal
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-all cursor-pointer"
+          @click="goToAssessment"
+        >
+          <i class="ri-file-list-3-line text-sm"></i> Penilaian
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-all cursor-pointer"
+          @click="goToDiscipline"
+        >
+          <i class="ri-shield-star-line text-sm"></i> Disiplin
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg transition-all cursor-pointer"
+          @click="goToSchedule"
+        >
+          <i class="ri-calendar-schedule-line text-sm"></i> Jadwal
+        </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-lg transition-all cursor-pointer"
+          title="Pengaturan Notifikasi Jadwal"
+          @click="openNotificationSettingsModal"
+        >
+          <i class="ri-notification-3-line text-sm"></i>
+        </button>
       </div>
     </div>
 
-    <!-- Sync Status Bar -->
+    <!-- Sync & Connectivity Status Bar -->
     <div
       v-if="pendingSyncCount > 0 || !isOnline"
-      class="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900 dark:text-amber-200"
+      class="bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900 dark:text-amber-200"
     >
       <div class="flex items-center gap-3">
         <div
-          class="p-2 bg-amber-100 dark:bg-amber-900/60 rounded-lg text-amber-700 dark:text-amber-300"
+          class="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-lg text-amber-700 dark:text-amber-300"
         >
           <i :class="isOnline ? 'ri-cloud-line text-xl' : 'ri-cloud-off-line text-xl'"></i>
         </div>
@@ -60,7 +144,7 @@
               {{
                 pendingSyncCount > 0
                   ? `Terdapat ${pendingSyncCount} data tersimpan lokal`
-                  : 'Mode Offline'
+                  : 'Mode Offline Aktif'
               }}
             </span>
             <span
@@ -77,8 +161,8 @@
           <div class="text-xs text-amber-700 dark:text-amber-400">
             {{
               isOnline
-                ? 'Data tersimpan di IndexedDB lokal dan siap disinkronkan ke Google Sheets.'
-                : 'Tersimpan lokal — akan disinkronkan ke server saat terhubung internet.'
+                ? 'Data tersimpan di IndexedDB lokal dan siap disinkronkan ke Supabase/Cloud.'
+                : 'Tersimpan lokal di perangkat — otomatis tersinkron saat internet tersedia.'
             }}
           </div>
         </div>
@@ -88,249 +172,664 @@
       </ElButton>
     </div>
 
-    <!-- Stats Summary for This Teacher -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="art-card p-5">
-        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Total Jam Mengajar</div>
-        <div class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">
-          {{ totalHours }} <span class="text-base font-normal text-gray-500">Jam/Minggu</span>
+    <!-- Top Focus Grid: Next Class Hero & Daily Progress -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Next Class Hero Card (Section 4) -->
+      <div
+        class="lg:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-sm border border-slate-700 flex flex-col justify-between relative overflow-hidden"
+      >
+        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
+          <i class="ri-graduation-cap-line text-[160px]"></i>
         </div>
-        <div class="text-xs text-gray-500 mt-1">Alokasi resmi Dokumen 1</div>
+
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-4">
+            <div class="flex items-center gap-2">
+              <span
+                class="px-2.5 py-0.5 text-xs font-semibold rounded-md uppercase tracking-wider font-mono"
+                :class="
+                  nextClassData?.timingStatus === 'ONGOING'
+                    ? 'bg-emerald-500 text-white animate-pulse'
+                    : nextClassData?.timingStatus === 'STARTING_SOON'
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-slate-700 text-slate-300'
+                "
+              >
+                {{
+                  nextClassData?.timingStatus === 'ONGOING'
+                    ? 'SEDANG BERLANGSUNG'
+                    : nextClassData?.timingStatus === 'STARTING_SOON'
+                      ? 'SEGERA DIMULAI'
+                      : nextClassData
+                        ? 'KELAS BERIKUTNYA'
+                        : 'STATUS MENGAJAR'
+                }}
+              </span>
+              <span
+                v-if="nextClassTimingLabel"
+                class="text-xs text-slate-300 font-mono bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700"
+              >
+                {{ nextClassTimingLabel }}
+              </span>
+            </div>
+
+            <button
+              type="button"
+              class="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+              @click="goToSchedule"
+            >
+              Semua Jadwal <i class="ri-arrow-right-line"></i>
+            </button>
+          </div>
+
+          <!-- If Next Class Available -->
+          <div v-if="nextClassData" class="space-y-3">
+            <div>
+              <div class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
+                {{ nextClassData.className }} &bull; {{ nextClassData.majorName }}
+              </div>
+              <h2 class="text-xl md:text-2xl font-bold tracking-tight text-white mt-0.5">
+                {{ nextClassData.subjectName }}
+              </h2>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 text-xs text-slate-300">
+              <div
+                class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700"
+              >
+                <i class="ri-time-line text-emerald-400"></i>
+                <span class="font-mono font-medium"
+                  >{{ nextClassData.timeStart }} – {{ nextClassData.timeEnd }} WIB</span
+                >
+              </div>
+              <div
+                class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700"
+              >
+                <i class="ri-map-pin-2-line text-emerald-400"></i>
+                <span>{{ nextClassData.roomName }}</span>
+              </div>
+              <div
+                class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700"
+              >
+                <i class="ri-calendar-check-line text-emerald-400"></i>
+                <span
+                  >Jam ke-{{ nextClassData.periodStart }} s.d {{ nextClassData.periodEnd }} ({{
+                    nextClassData.totalPeriods
+                  }}
+                  JP)</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- If No Next Class -->
+          <div v-else class="py-6 space-y-2">
+            <div class="text-slate-300 font-semibold text-base">
+              Tidak ada jadwal mengajar berikutnya hari ini.
+            </div>
+            <p class="text-xs text-slate-400 max-w-md">
+              Seluruh sesi tatap muka hari ini telah selesai atau Anda tidak memiliki alokasi jam
+              mengajar hari ini ({{ todayDayName }}).
+            </p>
+          </div>
+        </div>
+
+        <!-- Next Class Quick Action Footer -->
+        <div
+          v-if="nextClassData"
+          class="pt-5 mt-4 border-t border-slate-800 flex items-center justify-between gap-3"
+        >
+          <div class="flex items-center gap-2">
+            <span
+              class="px-2 py-0.5 text-[11px] font-medium rounded-full"
+              :class="
+                nextClassData.attendanceDone
+                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                  : 'bg-slate-800 text-slate-300'
+              "
+            >
+              Presensi: {{ nextClassData.attendanceDone ? 'Sudah Diisi' : 'Belum Diisi' }}
+            </span>
+            <span
+              class="px-2 py-0.5 text-[11px] font-medium rounded-full"
+              :class="
+                nextClassData.journalDone
+                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                  : 'bg-slate-800 text-slate-300'
+              "
+            >
+              Jurnal: {{ nextClassData.journalDone ? 'Sudah Diisi' : 'Belum Diisi' }}
+            </span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-all cursor-pointer shadow-xs"
+              @click="goToAttendance(nextClassData.id)"
+            >
+              <i class="ri-user-follow-line mr-1"></i> Buka Presensi
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-all cursor-pointer border border-slate-700"
+              @click="goToJournal(nextClassData.id)"
+            >
+              <i class="ri-book-read-line mr-1"></i> Buka Jurnal
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div class="art-card p-5">
-        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Jadwal Hari Ini</div>
-        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-          {{ todayScheduleItems.length }}
-          <span class="text-base font-normal text-gray-500">Sesi</span>
-        </div>
-        <div class="text-xs text-gray-500 mt-1">
-          {{ todayScheduleHours }} JP tatap muka ({{ todayDayName || 'Hari Ini' }})
-        </div>
-      </div>
+      <!-- Daily Progress & Completion Summary Card (Section 26) -->
+      <div
+        class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-xs flex flex-col justify-between gap-4"
+      >
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <h3
+              class="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5"
+            >
+              <i class="ri-task-line text-emerald-600"></i> Progres Operasional Hari Ini
+            </h3>
+            <span class="text-xs font-semibold font-mono text-emerald-600 dark:text-emerald-400">
+              {{ dailyCompletionPercent }}%
+            </span>
+          </div>
 
-      <div class="art-card p-5">
-        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Presensi Hari Ini</div>
-        <div class="text-3xl font-bold text-teal-600 dark:text-teal-400 mt-2">
-          {{ completedAttendanceCount }} / {{ todayScheduleItems.length }}
-          <span class="text-base font-normal text-gray-500">Selesai</span>
-        </div>
-        <div class="text-xs text-gray-500 mt-1">Progres input kehadiran siswa</div>
-      </div>
+          <!-- Progress Bar -->
+          <div
+            class="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden mb-4"
+          >
+            <div
+              class="bg-emerald-600 h-2.5 rounded-full transition-all duration-500"
+              :style="{ width: `${dailyCompletionPercent}%` }"
+            ></div>
+          </div>
 
-      <div class="art-card p-5">
-        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">Jurnal Hari Ini</div>
-        <div class="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-2">
-          {{ completedJournalCount }} / {{ todayScheduleItems.length }}
-          <span class="text-base font-normal text-gray-500">Selesai</span>
+          <div class="space-y-3 text-xs">
+            <div
+              class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50"
+            >
+              <div class="flex items-center gap-2">
+                <i
+                  :class="
+                    completedAttendanceCount === todayScheduleItems.length &&
+                    todayScheduleItems.length > 0
+                      ? 'ri-checkbox-circle-fill text-emerald-600 text-sm'
+                      : 'ri-checkbox-blank-circle-line text-slate-400 text-sm'
+                  "
+                ></i>
+                <span class="font-medium text-slate-700 dark:text-slate-300">Presensi Siswa</span>
+              </div>
+              <span class="font-semibold text-slate-900 dark:text-slate-100 font-mono">
+                {{ completedAttendanceCount }} / {{ todayScheduleItems.length }} Selesai
+              </span>
+            </div>
+
+            <div
+              class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50"
+            >
+              <div class="flex items-center gap-2">
+                <i
+                  :class="
+                    completedJournalCount === todayScheduleItems.length &&
+                    todayScheduleItems.length > 0
+                      ? 'ri-checkbox-circle-fill text-emerald-600 text-sm'
+                      : 'ri-checkbox-blank-circle-line text-slate-400 text-sm'
+                  "
+                ></i>
+                <span class="font-medium text-slate-700 dark:text-slate-300">Jurnal Mengajar</span>
+              </div>
+              <span class="font-semibold text-slate-900 dark:text-slate-100 font-mono">
+                {{ completedJournalCount }} / {{ todayScheduleItems.length }} Selesai
+              </span>
+            </div>
+
+            <div
+              class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/50"
+            >
+              <div class="flex items-center gap-2">
+                <i class="ri-time-line text-blue-500 text-sm"></i>
+                <span class="font-medium text-slate-700 dark:text-slate-300"
+                  >Total Jam Hari Ini</span
+                >
+              </div>
+              <span class="font-semibold text-slate-900 dark:text-slate-100 font-mono">
+                {{ todayScheduleHours }} JP Tatap Muka
+              </span>
+            </div>
+          </div>
         </div>
-        <div class="text-xs text-gray-500 mt-1">Progres input agenda tatap muka</div>
+
+        <div
+          class="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 flex items-center justify-between"
+        >
+          <span>Beban Mingguan Resmi:</span>
+          <span class="font-mono font-bold text-slate-700 dark:text-slate-300"
+            >{{ totalHours }} Jam / Minggu</span
+          >
+        </div>
       </div>
     </div>
 
-    <!-- Section: Jadwal Mengajar Hari Ini -->
-    <div class="art-card p-6 space-y-4">
-      <div class="flex items-center justify-between">
+    <!-- Academic Period Completeness & Submission Card (Existing & Reused) -->
+    <TeacherSubmissionCard :teacher-id="currentSession?.teacherId || ''" />
+
+    <!-- Structured Schedule & Spiritual Agenda Timeline (Section 3 & 5) -->
+    <div
+      class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-xs space-y-4"
+    >
+      <div
+        class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 flex-wrap gap-2"
+      >
         <div>
-          <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <i class="ri-calendar-event-line text-emerald-600"></i> Jadwal Mengajar Hari Ini
+          <h2
+            class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2"
+          >
+            <i class="ri-calendar-event-line text-emerald-600"></i> Jadwal Mengajar & Agenda Hari
+            Ini
           </h2>
-          <p class="text-xs text-gray-500 mt-0.5">
-            {{ formattedTodayDate }}
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            {{ formattedTodayDate }} &bull; FM.02.03.76.KUR.01.05 SMK NU Ungaran
           </p>
         </div>
-        <ElButton size="small" type="primary" plain @click="goToSchedule">
-          Lihat Semua Jadwal <i class="ri-arrow-right-line ml-1"></i>
-        </ElButton>
-      </div>
-
-      <div v-if="loading" class="py-8 text-center text-gray-400">
-        Memuat data jadwal hari ini...
-      </div>
-
-      <div
-        v-else-if="todayScheduleItems.length === 0"
-        class="py-8 text-center text-gray-400 bg-gray-50/50 dark:bg-gray-900/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-800 space-y-1"
-      >
-        <i class="ri-sun-line text-3xl text-gray-300 dark:text-gray-600"></i>
-        <div class="font-medium text-gray-700 dark:text-gray-300 text-sm">
-          Tidak ada jadwal tatap muka hari ini ({{ todayDayName || 'Hari Ini' }}).
-        </div>
-        <p class="text-xs text-gray-400">
-          Gunakan waktu untuk persiapan administrasi pembelajaran, bahan ajar, dan rekapitulasi.
-        </p>
-      </div>
-
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
-          v-for="item in todayScheduleItems"
-          :key="item.id"
-          class="bg-white dark:bg-[#202024] rounded-xl border p-4 transition-all hover:shadow-md cursor-pointer flex flex-col justify-between"
-          :class="[
-            item.timingStatus === 'ONGOING'
-              ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/15'
-              : 'border-gray-200 dark:border-gray-800 hover:border-emerald-300'
-          ]"
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 cursor-pointer"
           @click="goToSchedule"
         >
-          <div>
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <div class="flex items-center gap-1.5">
-                <span
-                  class="px-2 py-0.5 text-xs font-bold rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-mono"
-                >
-                  {{ item.timeStart }} – {{ item.timeEnd }} WIB
-                </span>
-                <span
-                  class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
-                >
-                  Jam {{ item.periodStart }}-{{ item.periodEnd }} ({{ item.totalPeriods }} JP)
-                </span>
-              </div>
+          Lihat Kalender Mingguan <i class="ri-arrow-right-line"></i>
+        </button>
+      </div>
+
+      <div v-if="loading" class="py-12 text-center text-slate-400">
+        Memuat jadwal tatap muka & agenda hari ini...
+      </div>
+
+      <div v-else class="space-y-3">
+        <!-- Render Integrated Timeline Slots (Spiritual, Breaks, and Teaching Sessions) -->
+        <div
+          v-for="slot in integratedTimeline"
+          :key="slot.key"
+          class="rounded-xl border p-4 transition-all"
+          :class="[
+            slot.isTeaching
+              ? slot.timingStatus === 'ONGOING'
+                ? 'border-emerald-500/80 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs'
+                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60'
+              : 'border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/30'
+          ]"
+        >
+          <!-- Non-Teaching Slot (Dhuha, Istirahat, Dhuhur/Mujahadah) -->
+          <div
+            v-if="!slot.isTeaching"
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+          >
+            <div class="flex items-center gap-3">
               <span
-                v-if="item.timingStatus === 'ONGOING'"
-                class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-600 text-white animate-pulse"
+                class="font-mono font-semibold text-slate-600 dark:text-slate-400 px-2 py-0.5 bg-slate-200/80 dark:bg-slate-800 rounded"
               >
-                BERLANGSUNG
+                {{ slot.timeStart }} – {{ slot.timeEnd }} WIB
               </span>
               <span
-                v-else-if="item.timingStatus === 'UPCOMING'"
-                class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-              >
-                BERIKUTNYA
-              </span>
-            </div>
-
-            <h3 class="text-base font-bold text-gray-900 dark:text-gray-100">
-              {{ item.subjectName }}
-            </h3>
-
-            <div class="mt-2 text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2">
-              <span
-                class="font-bold text-gray-900 dark:text-gray-200 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded"
-              >
-                {{ item.className }}
-              </span>
-              <span class="truncate">{{ item.majorName }}</span>
-            </div>
-
-            <!-- Status Badges for Attendance & Journal -->
-            <div class="mt-3 flex items-center gap-2 text-[11px] font-bold">
-              <span
-                class="px-2 py-0.5 rounded-full"
+                class="px-2 py-0.5 rounded-full text-[11px] font-bold"
                 :class="
-                  item.attendanceDone
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                  slot.agendaCategory === 'SPIRITUAL'
+                    ? 'bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300'
                     : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
                 "
               >
-                <i :class="item.attendanceDone ? 'ri-checkbox-circle-line' : 'ri-time-line'"></i>
-                Presensi: {{ item.attendanceDone ? 'Selesai' : 'Belum' }}
-              </span>
-
-              <span
-                class="px-2 py-0.5 rounded-full"
-                :class="
-                  item.journalDone
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                "
-              >
-                <i :class="item.journalDone ? 'ri-checkbox-circle-line' : 'ri-time-line'"></i>
-                Jurnal: {{ item.journalDone ? 'Selesai' : 'Belum' }}
+                <i
+                  :class="
+                    slot.agendaCategory === 'SPIRITUAL' ? 'ri-star-line mr-1' : 'ri-cup-line mr-1'
+                  "
+                ></i>
+                {{ slot.title }}
               </span>
             </div>
+            <div class="text-[11px] text-slate-400"> Agenda Bersama Sekolah &bull; Non-KBM </div>
           </div>
 
-          <div
-            class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500"
-          >
-            <div class="flex items-center gap-1.5">
-              <i class="ri-map-pin-2-line text-emerald-600"></i>
-              <span class="font-medium text-gray-700 dark:text-gray-300">{{ item.roomName }}</span>
+          <!-- Teaching Session Slot -->
+          <div v-else class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span
+                  class="font-mono font-bold text-slate-900 dark:text-slate-100 text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700"
+                >
+                  {{ slot.timeStart }} – {{ slot.timeEnd }} WIB
+                </span>
+                <span
+                  class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60"
+                >
+                  Jam {{ slot.periodStart }}-{{ slot.periodEnd }} ({{ slot.totalPeriods }} JP)
+                </span>
+                <span
+                  v-if="slot.timingStatus === 'ONGOING'"
+                  class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-600 text-white animate-pulse"
+                >
+                  SEDANG BERLANGSUNG
+                </span>
+                <span
+                  v-else-if="slot.timingStatus === 'STARTING_SOON'"
+                  class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500 text-white"
+                >
+                  SEGERA DIMULAI
+                </span>
+                <span
+                  v-else-if="slot.timingStatus === 'COMPLETED'"
+                  class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300"
+                >
+                  SELESAI
+                </span>
+              </div>
+
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-sm md:text-base font-bold text-slate-900 dark:text-slate-100">
+                  {{ slot.subjectName }}
+                </h3>
+                <span
+                  class="text-xs font-semibold px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200"
+                >
+                  {{ slot.className }}
+                </span>
+                <span class="text-xs text-slate-500 truncate max-w-xs">{{ slot.majorName }}</span>
+              </div>
+
+              <div class="flex items-center gap-3 text-xs text-slate-500">
+                <span class="flex items-center gap-1">
+                  <i class="ri-map-pin-2-line text-emerald-600"></i>
+                  <span class="font-medium text-slate-700 dark:text-slate-300">{{
+                    slot.roomName
+                  }}</span>
+                </span>
+                <span>&bull;</span>
+                <span
+                  class="font-medium"
+                  :class="
+                    slot.attendanceDone
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-slate-500'
+                  "
+                >
+                  <i :class="slot.attendanceDone ? 'ri-checkbox-circle-fill' : 'ri-time-line'"></i>
+                  Presensi: {{ slot.attendanceDone ? 'Selesai' : 'Belum' }}
+                </span>
+                <span>&bull;</span>
+                <span
+                  class="font-medium"
+                  :class="
+                    slot.journalDone ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500'
+                  "
+                >
+                  <i :class="slot.journalDone ? 'ri-checkbox-circle-fill' : 'ri-time-line'"></i>
+                  Jurnal: {{ slot.journalDone ? 'Selesai' : 'Belum' }}
+                </span>
+              </div>
             </div>
 
-            <div class="flex items-center gap-1.5">
-              <ElButton
-                size="small"
-                :type="item.attendanceDone ? 'info' : 'success'"
-                plain
-                @click.stop="goToAttendance(item.id)"
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-2 self-start md:self-center shrink-0">
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs"
+                :class="
+                  slot.attendanceDone
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                "
+                @click="goToAttendance(slot.id)"
               >
                 <i
-                  :class="item.attendanceDone ? 'ri-checkbox-circle-line' : 'ri-user-follow-line'"
-                  class="mr-1"
+                  :class="slot.attendanceDone ? 'ri-checkbox-circle-line' : 'ri-user-follow-line'"
                 ></i>
-                Presensi
-              </ElButton>
-              <ElButton
-                size="small"
-                :type="item.journalDone ? 'info' : 'primary'"
-                plain
-                @click.stop="goToJournal(item.id)"
+                {{ slot.attendanceDone ? 'Edit Presensi' : 'Isi Presensi' }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer shadow-xs"
+                :class="
+                  slot.journalDone
+                    ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    : 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white'
+                "
+                @click="goToJournal(slot.id)"
               >
-                <i
-                  :class="item.journalDone ? 'ri-checkbox-circle-line' : 'ri-book-read-line'"
-                  class="mr-1"
-                ></i>
-                Jurnal
-              </ElButton>
+                <i :class="slot.journalDone ? 'ri-checkbox-circle-line' : 'ri-book-read-line'"></i>
+                {{ slot.journalDone ? 'Edit Jurnal' : 'Isi Jurnal' }}
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Assigned Subjects & Classes List -->
-    <div class="art-card p-6">
-      <h2 class="text-base font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-        <i class="ri-book-2-line text-emerald-600"></i> Daftar Penugasan Mengajar (Dokumen 1)
-      </h2>
+    <!-- School Agendas & Announcements (Section 22 & 23) -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- School Agenda Card -->
+      <div
+        class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-xs space-y-4"
+      >
+        <div
+          class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3"
+        >
+          <h3
+            class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2"
+          >
+            <i class="ri-calendar-todo-line text-emerald-600"></i> Agenda Sekolah Terdekat
+          </h3>
+          <span class="text-xs text-slate-500 font-mono">Target: Guru & Semua</span>
+        </div>
 
-      <div v-if="loading" class="py-8 text-center text-gray-400"> Memuat data penugasan... </div>
+        <div v-if="schoolAgendas.length === 0" class="py-8 text-center text-slate-400 text-xs">
+          Belum ada agenda sekolah terdekat yang dijadwalkan.
+        </div>
 
-      <div v-else-if="teacherAssignments.length === 0" class="py-8 text-center text-gray-400">
-        Belum ada data penugasan mengajar yang terdaftar untuk akun ini.
+        <div v-else class="space-y-2.5">
+          <div
+            v-for="ag in schoolAgendas"
+            :key="ag.id"
+            class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3 text-xs"
+          >
+            <div class="space-y-1">
+              <div class="flex items-center gap-2">
+                <span
+                  class="px-2 py-0.5 text-[10px] font-bold rounded-md uppercase"
+                  :class="getAgendaCategoryBadge(ag.category)"
+                >
+                  {{ ag.category }}
+                </span>
+                <span class="font-bold text-slate-900 dark:text-slate-100">{{ ag.title }}</span>
+              </div>
+              <p
+                v-if="ag.description"
+                class="text-slate-500 dark:text-slate-400 text-[11px] line-clamp-1"
+              >
+                {{ ag.description }}
+              </p>
+              <div class="text-[11px] text-slate-400 flex items-center gap-2">
+                <span><i class="ri-calendar-line"></i> {{ ag.startDate }}</span>
+                <span v-if="ag.location"
+                  >&bull; <i class="ri-map-pin-line"></i> {{ ag.location }}</span
+                >
+              </div>
+            </div>
+            <span
+              v-if="ag.isMandatory"
+              class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300 shrink-0"
+            >
+              Wajib
+            </span>
+          </div>
+        </div>
       </div>
 
-      <ElTable v-else :data="teacherAssignments" stripe style="width: 100%">
-        <ElTableColumn label="Kode" prop="code" width="100">
-          <template #default="{ row }">
-            <span class="font-mono font-semibold text-emerald-600">{{ row.code || '-' }}</span>
-          </template>
-        </ElTableColumn>
+      <!-- Announcements Card -->
+      <div
+        class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 md:p-6 shadow-xs space-y-4"
+      >
+        <div
+          class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3"
+        >
+          <h3
+            class="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2"
+          >
+            <i class="ri-notification-badge-line text-emerald-600"></i> Pengumuman & Pemberitahuan
+          </h3>
+          <span class="text-xs text-slate-500 font-mono">{{ announcements.length }} Informasi</span>
+        </div>
 
-        <ElTableColumn label="Mata Pelajaran" min-width="220">
-          <template #default="{ row }">
-            <span class="font-medium text-gray-900 dark:text-gray-100">{{
-              getSubjectName(row.subjectId)
-            }}</span>
-          </template>
-        </ElTableColumn>
+        <div v-if="announcements.length === 0" class="py-8 text-center text-slate-400 text-xs">
+          Belum ada pengumuman resmi yang dipublikasikan.
+        </div>
 
-        <ElTableColumn label="Alokasi Jam" width="140">
-          <template #default="{ row }">
-            <span class="font-semibold text-gray-800 dark:text-gray-200">{{ row.hours }} Jam</span>
-          </template>
-        </ElTableColumn>
-
-        <ElTableColumn label="Status" width="120">
-          <template #default="{ row }">
-            <ElTag :type="row.status === 'ACTIVE' ? 'success' : 'info'" size="small">
-              {{ row.status === 'ACTIVE' ? 'Aktif' : 'Nonaktif' }}
-            </ElTag>
-          </template>
-        </ElTableColumn>
-      </ElTable>
+        <div v-else class="space-y-2.5">
+          <div
+            v-for="anc in announcements"
+            :key="anc.id"
+            class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition-all cursor-pointer space-y-1.5"
+            @click="openAnnouncementModal(anc)"
+          >
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <i
+                  v-if="anc.pinned || anc.isPinned"
+                  class="ri-pushpin-fill text-amber-500 text-xs"
+                  title="Disematkan"
+                ></i>
+                <h4 class="font-bold text-slate-900 dark:text-slate-100 text-xs">{{
+                  anc.title
+                }}</h4>
+              </div>
+              <span class="text-[10px] text-slate-400 font-mono">{{
+                formatDateShort(anc.createdAt)
+              }}</span>
+            </div>
+            <p class="text-slate-600 dark:text-slate-400 text-xs line-clamp-2">
+              {{ anc.content }}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
+
+    <!-- Notification Settings Dialog (Section 24) -->
+    <ElDialog
+      v-model="notificationModalVisible"
+      title="Pengaturan Notifikasi Jadwal Mengajar"
+      width="480px"
+      append-to-body
+    >
+      <div class="space-y-4 text-xs">
+        <p class="text-slate-600 dark:text-slate-400">
+          Atur pengingat otomatis untuk jadwal mengajar Anda agar tidak terlambat memasuki kelas.
+        </p>
+
+        <div
+          class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60"
+        >
+          <div>
+            <div class="font-semibold text-slate-900 dark:text-slate-100"
+              >Aktifkan Pengingat Jadwal</div
+            >
+            <div class="text-[11px] text-slate-500">Kirim notifikasi in-app & browser</div>
+          </div>
+          <ElSwitch v-model="notificationSettings.enabled" />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block font-semibold text-slate-700 dark:text-slate-300"
+            >Waktu Pengingat Sebelum Mulai</label
+          >
+          <ElSelect v-model="notificationSettings.leadTimeMinutes" class="w-full">
+            <ElOption :value="3" label="3 Menit Sebelum Sesi Mulai" />
+            <ElOption :value="5" label="5 Menit Sebelum Sesi Mulai (Standar)" />
+            <ElOption :value="10" label="10 Menit Sebelum Sesi Mulai" />
+            <ElOption :value="15" label="15 Menit Sebelum Sesi Mulai" />
+          </ElSelect>
+        </div>
+
+        <div
+          class="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60"
+        >
+          <div>
+            <div class="font-semibold text-slate-900 dark:text-slate-100"
+              >Notifikasi Tepat Saat Jam Mulai</div
+            >
+            <div class="text-[11px] text-slate-500">Peringatan saat jam tatap muka berbunyi</div>
+          </div>
+          <ElSwitch v-model="notificationSettings.notifyOnStart" />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="block font-semibold text-slate-700 dark:text-slate-300"
+            >Peringatan Akhir Jam Mengajar</label
+          >
+          <ElSelect v-model="notificationSettings.notifyBeforeEndMinutes" class="w-full">
+            <ElOption :value="5" label="5 Menit Sebelum Jam Berakhir" />
+            <ElOption :value="10" label="10 Menit Sebelum Jam Berakhir (Standar)" />
+            <ElOption :value="15" label="15 Menit Sebelum Jam Berakhir" />
+          </ElSelect>
+        </div>
+
+        <div class="pt-2">
+          <ElButton
+            v-if="!hasBrowserNotificationPermission"
+            type="primary"
+            plain
+            size="small"
+            class="w-full"
+            @click="requestBrowserNotification"
+          >
+            <i class="ri-notification-badge-line mr-1"></i> Izinkan Notifikasi Browser
+          </ElButton>
+          <span
+            v-else
+            class="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1"
+          >
+            <i class="ri-checkbox-circle-fill"></i> Izin notifikasi browser aktif.
+          </span>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <ElButton @click="notificationModalVisible = false">Tutup</ElButton>
+          <ElButton type="primary" @click="saveNotificationSettings">Simpan Pengaturan</ElButton>
+        </div>
+      </template>
+    </ElDialog>
+
+    <!-- Announcement Detail Dialog -->
+    <ElDialog
+      v-model="announcementModalVisible"
+      :title="selectedAnnouncement?.title || 'Pengumuman Resmi'"
+      width="540px"
+      append-to-body
+    >
+      <div v-if="selectedAnnouncement" class="space-y-4">
+        <div class="flex items-center justify-between text-xs text-slate-500 border-b pb-2">
+          <span>Target: {{ selectedAnnouncement.targetRole || 'Semua Pengguna' }}</span>
+          <span class="font-mono">{{ formatDateShort(selectedAnnouncement.createdAt) }}</span>
+        </div>
+        <div class="text-sm text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
+          {{ selectedAnnouncement.content }}
+        </div>
+      </div>
+      <template #footer>
+        <ElButton @click="announcementModalVisible = false">Tutup</ElButton>
+      </template>
+    </ElDialog>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref, onMounted, onUnmounted, computed } from 'vue'
   import { useRouter } from 'vue-router'
-  import { ElButton, ElTable, ElTableColumn, ElTag, ElMessage } from 'element-plus'
+  import { ElButton, ElDialog, ElSelect, ElOption, ElSwitch, ElMessage } from 'element-plus'
   import { authService } from '@/core/services/auth'
+  import TeacherSubmissionCard from './components/TeacherSubmissionCard.vue'
   import { repositories } from '@/core/repositories'
   import { syncService } from '@/core/services/sync'
   import {
@@ -338,7 +837,20 @@
     getTodayDayOfWeek,
     type TeacherResolvedScheduleItem
   } from '@/core/services/master/ScheduleService'
-  import type { SessionData, TeacherAssignmentEntity, SubjectEntity } from '@/core/types'
+  import { schoolAgendaService } from '@/core/services/agenda/SchoolAgendaService'
+  import { announcementService } from '@/core/services/announcement/AnnouncementService'
+  import {
+    teacherScheduleNotificationService,
+    type ScheduleAlert,
+    type ScheduleNotificationSettings
+  } from '@/core/services/notification/TeacherScheduleNotificationService'
+  import type {
+    SessionData,
+    TeacherAssignmentEntity,
+    SubjectEntity,
+    SchoolAgendaEntity,
+    AnnouncementEntity
+  } from '@/core/types'
 
   defineOptions({ name: 'TeacherDashboard' })
 
@@ -347,17 +859,32 @@
   const teacherName = ref('')
   const academicYearName = ref('')
   const semesterName = ref('')
-  const loading = ref(false)
+  const loading = ref(true)
   const syncing = ref(false)
   const pendingSyncCount = ref(0)
   const isOnline = ref(typeof navigator !== 'undefined' ? navigator.onLine : true)
   const teacherAssignments = ref<TeacherAssignmentEntity[]>([])
   const subjectMap = ref<Map<string, string>>(new Map())
   const todayScheduleItems = ref<TeacherResolvedScheduleItem[]>([])
+  const schoolAgendas = ref<SchoolAgendaEntity[]>([])
+  const announcements = ref<AnnouncementEntity[]>([])
 
-  const todayDayName = computed(() => {
-    return getTodayDayOfWeek()
-  })
+  // Schedule Alerts & Notifications
+  const activeAlert = ref<ScheduleAlert | null>(null)
+  const notificationModalVisible = ref(false)
+  const announcementModalVisible = ref(false)
+  const selectedAnnouncement = ref<AnnouncementEntity | null>(null)
+  const notificationSettings = ref<ScheduleNotificationSettings>(
+    teacherScheduleNotificationService.getSettings()
+  )
+  const hasBrowserNotificationPermission = ref(
+    teacherScheduleNotificationService.hasNotificationPermission()
+  )
+
+  let alertUnsubscribe: (() => void) | null = null
+  let scheduleTimerInterval: any = null
+
+  const todayDayName = computed(() => getTodayDayOfWeek())
 
   const formattedTodayDate = computed(() => {
     return new Intl.DateTimeFormat('id-ID', {
@@ -384,6 +911,268 @@
     return todayScheduleItems.value.filter((s) => s.journalDone).length
   })
 
+  const dailyCompletionPercent = computed(() => {
+    if (todayScheduleItems.value.length === 0) return 100
+    const totalTasks = todayScheduleItems.value.length * 2 // attendance + journal
+    const completedTasks = completedAttendanceCount.value + completedJournalCount.value
+    return Math.round((completedTasks / totalTasks) * 100)
+  })
+
+  /**
+   * Determine Next Class dynamically based on current time + today's structured schedule (Section 4)
+   */
+  const nextClassData = computed(() => {
+    if (todayScheduleItems.value.length === 0) return null
+
+    const now = new Date()
+    const curMin = now.getHours() * 60 + now.getMinutes()
+
+    // 1. Check if any class is currently ongoing
+    for (const item of todayScheduleItems.value) {
+      const startMin = teacherScheduleNotificationService.parseTimeToMinutes(item.timeStart)
+      const endMin = teacherScheduleNotificationService.parseTimeToMinutes(item.timeEnd)
+      if (curMin >= startMin && curMin < endMin) {
+        return {
+          ...item,
+          timingStatus: 'ONGOING' as const
+        }
+      }
+    }
+
+    // 2. Find the earliest upcoming class that hasn't started yet
+    const upcoming = todayScheduleItems.value
+      .map((item) => {
+        const startMin = teacherScheduleNotificationService.parseTimeToMinutes(item.timeStart)
+        return { item, startMin }
+      })
+      .filter((u) => u.startMin > curMin)
+      .sort((a, b) => a.startMin - b.startMin)
+
+    if (upcoming.length > 0) {
+      const next = upcoming[0]
+      const wait = next.startMin - curMin
+      return {
+        ...next.item,
+        timingStatus: (wait <= 15 ? 'STARTING_SOON' : 'UPCOMING') as 'STARTING_SOON' | 'UPCOMING'
+      }
+    }
+
+    // 3. All classes completed
+    return null
+  })
+
+  const nextClassTimingLabel = computed(() => {
+    if (!nextClassData.value) return ''
+    const now = new Date()
+    const curMin = now.getHours() * 60 + now.getMinutes()
+    const startMin = teacherScheduleNotificationService.parseTimeToMinutes(
+      nextClassData.value.timeStart
+    )
+    const endMin = teacherScheduleNotificationService.parseTimeToMinutes(
+      nextClassData.value.timeEnd
+    )
+
+    if (curMin >= startMin && curMin < endMin) {
+      const remaining = endMin - curMin
+      return `Sisa ${remaining} menit`
+    }
+    if (startMin > curMin) {
+      const wait = startMin - curMin
+      return `${wait} menit lagi`
+    }
+    return ''
+  })
+
+  /**
+   * Integrated Timeline with Canonical Spiritual & Break Agendas (Section 5)
+   */
+  const integratedTimeline = computed(() => {
+    const items: Array<{
+      key: string
+      timeStart: string
+      timeEnd: string
+      isTeaching: boolean
+      title?: string
+      agendaCategory?: 'SPIRITUAL' | 'BREAK'
+      id?: string
+      className?: string
+      subjectName?: string
+      roomName?: string
+      majorName?: string
+      periodStart?: number
+      periodEnd?: number
+      totalPeriods?: number
+      timingStatus?: string
+      attendanceDone?: boolean
+      journalDone?: boolean
+    }> = []
+
+    // Canonical spiritual & break slots
+    const isFriday = todayDayName.value === 'JUMAT'
+    const nonTeachingSlots = [
+      {
+        key: 'dhuha',
+        timeStart: '06:45',
+        timeEnd: '07:00',
+        title: 'Sholat Dhuha Berjamaah',
+        agendaCategory: 'SPIRITUAL' as const
+      },
+      {
+        key: 'break1',
+        timeStart: '09:30',
+        timeEnd: '09:45',
+        title: 'Istirahat 1',
+        agendaCategory: 'BREAK' as const
+      },
+      {
+        key: 'dhuhur',
+        timeStart: '11:45',
+        timeEnd: '12:30',
+        title: isFriday ? 'Sholat Jumat & Mujahadah' : 'Sholat Dhuhur Berjamaah',
+        agendaCategory: 'SPIRITUAL' as const
+      },
+      {
+        key: 'break2',
+        timeStart: '14:00',
+        timeEnd: '14:15',
+        title: 'Istirahat 2',
+        agendaCategory: 'BREAK' as const
+      }
+    ]
+
+    nonTeachingSlots.forEach((slot) => {
+      items.push({
+        key: slot.key,
+        timeStart: slot.timeStart,
+        timeEnd: slot.timeEnd,
+        isTeaching: false,
+        title: slot.title,
+        agendaCategory: slot.agendaCategory
+      })
+    })
+
+    // Teaching items
+    todayScheduleItems.value.forEach((t) => {
+      const timing = teacherScheduleNotificationService.getTimingStatus(t.timeStart, t.timeEnd)
+      items.push({
+        key: `teach_${t.id}`,
+        id: t.id,
+        timeStart: t.timeStart,
+        timeEnd: t.timeEnd,
+        isTeaching: true,
+        className: t.className,
+        subjectName: t.subjectName,
+        roomName: t.roomName,
+        majorName: t.majorName,
+        periodStart: t.periodStart,
+        periodEnd: t.periodEnd,
+        totalPeriods: t.totalPeriods,
+        timingStatus: timing.status,
+        attendanceDone: t.attendanceDone,
+        journalDone: t.journalDone
+      })
+    })
+
+    // Sort chronologically by start time
+    return items.sort((a, b) => {
+      const minA = teacherScheduleNotificationService.parseTimeToMinutes(a.timeStart)
+      const minB = teacherScheduleNotificationService.parseTimeToMinutes(b.timeStart)
+      return minA - minB
+    })
+  })
+
+  // Quick Action Routing (Section 21)
+  const handleQuickAttendance = () => {
+    if (nextClassData.value?.id) {
+      goToAttendance(nextClassData.value.id)
+    } else {
+      goToAttendance()
+    }
+  }
+
+  const handleQuickJournal = () => {
+    if (nextClassData.value?.id) {
+      goToJournal(nextClassData.value.id)
+    } else {
+      goToJournal()
+    }
+  }
+
+  const goToSchedule = () => router.push('/teacher/schedule')
+  const goToAttendance = (scheduleId?: string) => {
+    if (scheduleId) {
+      router.push({ path: '/teacher/attendance', query: { scheduleId } })
+    } else {
+      router.push('/teacher/attendance')
+    }
+  }
+  const goToJournal = (scheduleId?: string) => {
+    if (scheduleId) {
+      router.push({ path: '/teacher/journal', query: { scheduleId } })
+    } else {
+      router.push('/teacher/journal')
+    }
+  }
+  const goToAssessment = () => router.push('/teacher/assessment')
+  const goToDiscipline = () => router.push('/teacher/discipline')
+
+  const dismissAlert = () => {
+    activeAlert.value = null
+  }
+
+  const openNotificationSettingsModal = () => {
+    notificationSettings.value = teacherScheduleNotificationService.getSettings()
+    hasBrowserNotificationPermission.value =
+      teacherScheduleNotificationService.hasNotificationPermission()
+    notificationModalVisible.value = true
+  }
+
+  const requestBrowserNotification = async () => {
+    const granted = await teacherScheduleNotificationService.requestNotificationPermission()
+    hasBrowserNotificationPermission.value = granted
+    if (granted) {
+      ElMessage.success('Izin notifikasi browser berhasil diaktifkan.')
+    } else {
+      ElMessage.warning('Izin notifikasi belum diberikan atau diblokir browser.')
+    }
+  }
+
+  const saveNotificationSettings = () => {
+    teacherScheduleNotificationService.saveSettings(notificationSettings.value)
+    notificationModalVisible.value = false
+    ElMessage.success('Pengaturan notifikasi berhasil disimpan.')
+  }
+
+  const openAnnouncementModal = (anc: AnnouncementEntity) => {
+    selectedAnnouncement.value = anc
+    announcementModalVisible.value = true
+  }
+
+  const formatDateShort = (iso?: string) => {
+    if (!iso) return ''
+    try {
+      const d = new Date(iso)
+      return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
+    } catch {
+      return ''
+    }
+  }
+
+  const getAgendaCategoryBadge = (category: string) => {
+    switch (category) {
+      case 'AKADEMIK':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+      case 'UJIAN':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+      case 'LIBUR':
+        return 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+      case 'RAPAT':
+        return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+      default:
+        return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+    }
+  }
+
   const loadSyncStatus = async () => {
     pendingSyncCount.value = await syncService.getPendingCount()
   }
@@ -393,7 +1182,7 @@
     try {
       const res = await syncService.syncAll()
       if (res.syncedCount > 0 && res.failedCount === 0) {
-        ElMessage.success(`Berhasil menyinkronkan ${res.syncedCount} data lokal ke Google Sheets.`)
+        ElMessage.success(`Berhasil menyinkronkan ${res.syncedCount} data lokal.`)
       } else if (res.failedCount > 0) {
         const firstErr = res.errors && res.errors.length > 0 ? res.errors[0] : ''
         ElMessage.error(`Gagal menyinkronkan ${res.failedCount} data. ${firstErr}`)
@@ -412,11 +1201,24 @@
     isOnline.value = typeof navigator !== 'undefined' ? navigator.onLine : true
   }
 
+  const evaluateAlerts = () => {
+    if (todayScheduleItems.value.length === 0) return
+    const alerts = teacherScheduleNotificationService.evaluateScheduleAlerts(
+      todayScheduleItems.value
+    )
+    if (alerts.length > 0) {
+      activeAlert.value = alerts[0]
+      teacherScheduleNotificationService.dispatchAlert(alerts[0])
+    }
+  }
+
   onUnmounted(() => {
     if (typeof window !== 'undefined') {
       window.removeEventListener('online', updateOnlineStatus)
       window.removeEventListener('offline', updateOnlineStatus)
     }
+    if (alertUnsubscribe) alertUnsubscribe()
+    if (scheduleTimerInterval) clearInterval(scheduleTimerInterval)
   })
 
   onMounted(async () => {
@@ -424,6 +1226,12 @@
       window.addEventListener('online', updateOnlineStatus)
       window.addEventListener('offline', updateOnlineStatus)
     }
+
+    // Subscribe to in-app alerts
+    alertUnsubscribe = teacherScheduleNotificationService.onInAppAlert((alert) => {
+      activeAlert.value = alert
+    })
+
     await loadSyncStatus()
     currentSession.value = authService.getCurrentSession()
     if (!currentSession.value || currentSession.value.role !== 'GURU') {
@@ -436,13 +1244,16 @@
     if (teacherId) {
       loading.value = true
       try {
-        const [assignments, subjects, teacher, activeAy, schedData] = await Promise.all([
-          repositories.teacherAssignments.findByTeacherId(teacherId),
-          repositories.subjects.findAll(),
-          repositories.teachers.findById(teacherId),
-          repositories.academicYears.findActive(),
-          scheduleService.getTeacherSchedule(teacherId)
-        ])
+        const [assignments, subjects, teacher, activeAy, schedData, agendas, anncs] =
+          await Promise.all([
+            repositories.teacherAssignments.findByTeacherId(teacherId),
+            repositories.subjects.findAll(),
+            repositories.teachers.findById(teacherId),
+            repositories.academicYears.findActive(),
+            scheduleService.getTeacherSchedule(teacherId),
+            schoolAgendaService.getAgendasForRole('GURU'),
+            announcementService.getPublishedAnnouncements('GURU')
+          ])
 
         teacherAssignments.value = assignments
         if (teacher) {
@@ -455,10 +1266,20 @@
         }
 
         todayScheduleItems.value = schedData.todaySchedules
+        schoolAgendas.value = agendas.slice(0, 5) // Recent 5
+        announcements.value = anncs.slice(0, 5) // Recent 5
 
         const sMap = new Map<string, string>()
         subjects.forEach((s: SubjectEntity) => sMap.set(s.id, s.name))
         subjectMap.value = sMap
+
+        // Initial alert evaluation
+        evaluateAlerts()
+
+        // Check for schedule alerts every 30 seconds
+        scheduleTimerInterval = setInterval(() => {
+          evaluateAlerts()
+        }, 30000)
       } catch (err) {
         console.warn('[TeacherDashboard] Error loading dashboard data:', err)
       } finally {
@@ -466,43 +1287,4 @@
       }
     }
   })
-
-  const getSubjectName = (subjectId?: string) => {
-    if (!subjectId) return '-'
-    return subjectMap.value.get(subjectId) || subjectId
-  }
-
-  const goToSchedule = () => {
-    router.push('/teacher/schedule')
-  }
-
-  const goToAttendance = (scheduleId?: string) => {
-    if (scheduleId) {
-      router.push({
-        path: '/teacher/attendance',
-        query: { scheduleId }
-      })
-    } else {
-      router.push('/teacher/attendance')
-    }
-  }
-
-  const goToJournal = (scheduleId?: string) => {
-    if (scheduleId) {
-      router.push({
-        path: '/teacher/journal',
-        query: { scheduleId }
-      })
-    } else {
-      router.push('/teacher/journal')
-    }
-  }
-
-  const goToProfile = () => {
-    router.push('/teacher/profile')
-  }
-
-  const goToAssessment = () => {
-    router.push('/teacher/assessment')
-  }
 </script>

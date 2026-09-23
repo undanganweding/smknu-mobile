@@ -11,9 +11,18 @@
         </p>
       </div>
 
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <ElButton type="danger" plain @click="exportPdf">
+          <i class="ri-file-pdf-line mr-1"></i> Export Dokumen 1 (PDF)
+        </ElButton>
+        <ElButton type="success" plain @click="exportXlsx">
+          <i class="ri-file-excel-line mr-1"></i> Export Dokumen 1 (Excel)
+        </ElButton>
+        <ElButton type="warning" plain @click="openImportModal">
+          <i class="ri-upload-2-line mr-1"></i> Import Dokumen 1 (PDF / Excel)
+        </ElButton>
         <ElButton type="primary" @click="openCreateModal">
-          <i class="ri-add-line mr-1"></i> Tambah Penugasan Baru
+          <i class="ri-add-line mr-1"></i> Tambah Penugasan
         </ElButton>
       </div>
     </div>
@@ -166,12 +175,109 @@
         </div>
       </template>
     </ElDialog>
+
+    <!-- Import Dokumen 1 (PDF / Excel) Modal -->
+    <ElDialog
+      v-model="importModalVisible"
+      title="Import Dokumen 1 (Kode Guru & Mata Pelajaran)"
+      width="780px"
+      destroy-on-close
+    >
+      <div class="space-y-4">
+        <ElAlert
+          type="info"
+          show-icon
+          :closable="false"
+          title="Sinkronisasi Dokumen 1 Resmi (PDF & XLSX)"
+          description="Unggah file PDF atau Excel (XLSX/XLS) Dokumen 1 SMK NU Ungaran. Sistem akan otomatis menyinkronkan 117 penugasan, kode guru, nama guru, mata pelajaran, dan alokasi JP secara paten."
+        />
+
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-gray-500">Pilih file Dokumen 1 dari perangkat Anda:</span>
+          <div class="flex items-center gap-2">
+            <ElButton size="small" type="primary" plain @click="downloadTemplate('XLSX')">
+              <i class="ri-file-excel-line mr-1"></i> Template Excel
+            </ElButton>
+            <ElButton size="small" type="info" plain @click="downloadTemplate('CSV')">
+              <i class="ri-file-text-line mr-1"></i> Template CSV
+            </ElButton>
+          </div>
+        </div>
+
+        <ElUpload
+          drag
+          action=""
+          :auto-upload="false"
+          :show-file-list="false"
+          accept=".pdf, .xlsx, .xls"
+          :on-change="handleFileSelected"
+        >
+          <div class="py-4 text-center">
+            <i class="ri-upload-cloud-2-line text-4xl text-primary mb-2"></i>
+            <div class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+              Klik atau Seret File Dokumen 1 (PDF / XLSX / XLS) ke Sini
+            </div>
+            <p class="text-xs text-gray-400 mt-1">Mendukung file PDF resmi 2 halaman atau Excel</p>
+          </div>
+        </ElUpload>
+
+        <!-- Preview Table if Parsed -->
+        <div v-if="parsedDokumen1" class="mt-4 space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="text-sm font-bold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <i class="ri-checkbox-circle-fill text-emerald-500"></i>
+              Hasil Ekstraksi File:
+              <span class="text-primary font-mono">{{ parsedDokumen1.filename }}</span>
+            </div>
+            <div class="text-xs text-gray-500">
+              Terdeteksi:
+              <span class="font-bold text-emerald-600">{{ parsedDokumen1.rows.length }}</span> baris
+              &bull; Total:
+              <span class="font-bold text-primary">{{ parsedDokumen1.totalHours }} JP</span>
+            </div>
+          </div>
+
+          <div class="max-h-64 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded">
+            <ElTable :data="parsedDokumen1.rows" size="small" stripe style="width: 100%">
+              <ElTableColumn prop="no" label="No" width="55" align="center" />
+              <ElTableColumn prop="code" label="Kode" width="75" align="center">
+                <template #default="{ row }">
+                  <span class="font-mono font-bold text-primary">{{ row.code }}</span>
+                </template>
+              </ElTableColumn>
+              <ElTableColumn prop="teacherName" label="Nama Guru" min-width="180" />
+              <ElTableColumn prop="subjectName" label="Mata Pelajaran" min-width="200" />
+              <ElTableColumn prop="hours" label="Jam" width="65" align="center">
+                <template #default="{ row }">
+                  <span class="font-bold">{{ row.hours }}</span>
+                </template>
+              </ElTableColumn>
+            </ElTable>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <ElButton @click="importModalVisible = false">Batal</ElButton>
+          <ElButton
+            type="primary"
+            :disabled="!parsedDokumen1 || parsedDokumen1.rows.length === 0"
+            :loading="committingImport"
+            @click="handleCommitDokumen1"
+          >
+            <i class="ri-check-double-line mr-1"></i> Terapkan & Sinkronkan ke Database
+          </ElButton>
+        </div>
+      </template>
+    </ElDialog>
   </div>
 </template>
 
 <script setup lang="ts">
   import { ref, computed, onMounted } from 'vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
+  import type { UploadFile } from 'element-plus'
   import {
     assignmentService,
     AssignmentWithDetails
@@ -179,17 +285,25 @@
   import { teacherService } from '@/core/services/master/TeacherService'
   import { subjectService } from '@/core/services/master/SubjectService'
   import { academicService } from '@/core/services/master/AcademicService'
+  import { importService } from '@/core/services/import/ImportService'
+  import { dokumen1ExportService } from '@/core/services/export/Dokumen1ExportService'
   import type { TeacherEntity, SubjectEntity, SemesterType } from '@/core/types'
+  import type { Dokumen1ParseResult } from '@/core/services/import/PdfDokumen1Parser'
   import type { FormInstance, FormRules } from 'element-plus'
 
   const assignments = ref<AssignmentWithDetails[]>([])
   const teachers = ref<TeacherEntity[]>([])
   const subjects = ref<SubjectEntity[]>([])
-  const loading = ref(false)
+  const loading = ref(true)
   const saving = ref(false)
   const searchQuery = ref('')
   const filterTeacher = ref<string>('')
   const activeAcademicYearId = ref('ay_2026_2027_ganjil')
+
+  // Dokumen 1 Import State
+  const importModalVisible = ref(false)
+  const committingImport = ref(false)
+  const parsedDokumen1 = ref<(Dokumen1ParseResult & { filename: string }) | null>(null)
 
   const modalVisible = ref(false)
   const isEditing = ref(false)
@@ -328,6 +442,91 @@
       if (err !== 'cancel') {
         ElMessage.error(err.message || 'Gagal menghapus penugasan mengajar.')
       }
+    }
+  }
+
+  // Export Dokumen 1 PDF
+  async function exportPdf() {
+    try {
+      ElMessage.info('Menyiapkan file PDF Dokumen 1...')
+      await dokumen1ExportService.exportToPdf()
+      ElMessage.success('Dokumen 1 PDF berhasil diunduh.')
+    } catch (err: any) {
+      ElMessage.error(err.message || 'Gagal mengekspor Dokumen 1 ke PDF.')
+    }
+  }
+
+  // Export Dokumen 1 Excel
+  async function exportXlsx() {
+    try {
+      ElMessage.info('Menyiapkan file Excel Dokumen 1...')
+      await dokumen1ExportService.exportToXlsx()
+      ElMessage.success('Dokumen 1 Excel berhasil diunduh.')
+    } catch (err: any) {
+      ElMessage.error(err.message || 'Gagal mengekspor Dokumen 1 ke Excel.')
+    }
+  }
+
+  function openImportModal() {
+    parsedDokumen1.value = null
+    importModalVisible.value = true
+  }
+
+  function downloadTemplate(format: 'XLSX' | 'CSV') {
+    dokumen1ExportService.generateTemplate(format)
+    ElMessage.success(`Template Dokumen 1 ${format} berhasil diunduh.`)
+  }
+
+  async function handleFileSelected(uploadFile: UploadFile) {
+    if (!uploadFile.raw) return
+    const file = uploadFile.raw
+    const filename = file.name
+    const isPdf = filename.toLowerCase().endsWith('.pdf')
+    const isExcel =
+      filename.toLowerCase().endsWith('.xlsx') || filename.toLowerCase().endsWith('.xls')
+
+    if (!isPdf && !isExcel) {
+      ElMessage.error('Format file harus berupa PDF (.pdf) atau Excel (.xlsx/.xls)')
+      return
+    }
+
+    try {
+      ElMessage.info(`Membaca dan memvalidasi file ${filename}...`)
+      const buffer = await file.arrayBuffer()
+      const result = await importService.parseAndPreviewDokumen1(buffer, filename)
+
+      if (!result.success || result.rows.length === 0) {
+        ElMessage.warning('Tidak dapat mendeteksi baris data Dokumen 1 dari file yang diunggah.')
+        return
+      }
+
+      parsedDokumen1.value = {
+        ...result,
+        filename
+      }
+      ElMessage.success(`Berhasil mengekstrak ${result.rows.length} baris Dokumen 1.`)
+    } catch (err: any) {
+      ElMessage.error(err.message || 'Gagal memproses file Dokumen 1.')
+    }
+  }
+
+  async function handleCommitDokumen1() {
+    if (!parsedDokumen1.value || parsedDokumen1.value.rows.length === 0) return
+
+    committingImport.value = true
+    try {
+      const res = await importService.commitDokumen1(
+        parsedDokumen1.value.rows,
+        parsedDokumen1.value.filename
+      )
+      ElMessage.success(res.message)
+      importModalVisible.value = false
+      parsedDokumen1.value = null
+      await loadData()
+    } catch (err: any) {
+      ElMessage.error(err.message || 'Gagal menerapkan import Dokumen 1.')
+    } finally {
+      committingImport.value = false
     }
   }
 

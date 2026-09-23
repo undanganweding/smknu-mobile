@@ -1,41 +1,68 @@
 @charset "UTF-8";
 
-/*滚动条*/
-/*滚动条整体部分,必须要设置*/
+/* Global Font Rendering & Smoothing */
+html,
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+::selection {
+  background-color: rgba(5, 150, 105, 0.2);
+  color: #059669;
+}
+
+.dark ::selection {
+  background-color: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+}
+
+/* Scrollbar styling */
 ::-webkit-scrollbar {
-  width: 8px !important;
-  height: 0 !important;
+  width: 6px !important;
+  height: 6px !important;
 }
 
-/*滚动条的轨道*/
 ::-webkit-scrollbar-track {
-  background-color: var(--art-gray-200);
+  background-color: transparent;
 }
 
-/*滚动条的滑块按钮*/
 ::-webkit-scrollbar-thumb {
-  border-radius: 5px;
-  background-color: #cccccc !important;
-  transition: all 0.2s;
-  -webkit-transition: all 0.2s;
+  border-radius: 4px;
+  background-color: rgba(148, 163, 184, 0.4) !important;
+  transition: background-color 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #b0abab !important;
+  background-color: rgba(100, 116, 139, 0.7) !important;
 }
 
-/*滚动条的上下两端的按钮*/
 ::-webkit-scrollbar-button {
-  height: 0px;
+  display: none;
+  height: 0;
   width: 0;
 }
 
 .dark {
-  ::-webkit-scrollbar-track {
-    background-color: var(--default-bg-color);
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.4) !important;
   }
 
-  ::-webkit-scrollbar-thumb {
-    background-color: var(--art-gray-300) !important;
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.7) !important;
+  }
+}
+
+/* Accessibility: Support reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

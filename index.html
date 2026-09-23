@@ -1,9 +1,9 @@
 <!doctype html>
-<html>
+<html lang="id">
   <head>
     <title>Guru Offline - SMK NU Ungaran</title>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta
       name="description"
       content="Sistem Informasi Akademik & Pengajaran Guru Offline SMK NU Ungaran berbasis IndexedDB."
@@ -17,18 +17,18 @@
     <link rel="manifest" href="/manifest.json" />
 
     <style>
-      /* 防止页面刷新时白屏的初始样式 */
+      /* Base background to prevent flash */
       html {
         background-color: #fafbfc;
       }
 
       html.dark {
-        background-color: #070707;
+        background-color: #121212;
       }
     </style>
 
     <script>
-      // 初始化 html class 主题属性
+      // Inisialisasi tema sebelum rendering
       ;(function () {
         try {
           if (typeof Storage === 'undefined' || !window.localStorage) {

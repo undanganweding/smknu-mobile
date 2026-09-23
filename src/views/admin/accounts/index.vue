@@ -219,7 +219,7 @@
 
   defineOptions({ name: 'AdminAccounts' })
 
-  const loading = ref(false)
+  const loading = ref(true)
   const saving = ref(false)
   const users = ref<UserEntity[]>([])
   const teachersList = ref<TeacherEntity[]>([])

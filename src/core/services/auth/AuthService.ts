@@ -6,6 +6,8 @@
 
 import { repositories } from '../../repositories'
 import { hashPassword, verifyPassword } from '../../security/password'
+import { getSupabaseClient } from '../../supabase/client'
+import { connectivityManager } from '../sync/ConnectivityManager'
 import type {
   UserEntity,
   TeacherEntity,
@@ -13,7 +15,9 @@ import type {
   SessionData,
   AuthResult,
   AuthOperationResult,
-  CreateUserParams
+  CreateUserParams,
+  UserIdentity,
+  AuthState
 } from '../../types'
 
 const SESSION_STORAGE_KEY = 'guru_offline_session'
@@ -34,6 +38,62 @@ export class AuthService {
       AuthService.instance = new AuthService()
     }
     return AuthService.instance
+  }
+
+  /**
+   * Helper to construct Canonical UserIdentity model
+   */
+  public buildIdentity(
+    user: UserEntity,
+    teacher: TeacherEntity | undefined,
+    source: 'SUPABASE' | 'OFFLINE_CACHE',
+    sessionState: AuthState = 'authenticated'
+  ): UserIdentity {
+    const isGuru = user.role === 'GURU'
+    const displayName = isGuru
+      ? teacher?.name || user.username
+      : user.username === 'admin'
+        ? 'Administrator Sistem'
+        : user.username
+    const email =
+      isGuru && teacher?.email
+        ? teacher.email
+        : `${user.username.toLowerCase()}@smknuungaran.sch.id`
+
+    const permissions =
+      user.role === 'ADMIN'
+        ? [
+            'admin:all',
+            'admin:users:manage',
+            'admin:master:write',
+            'admin:submissions:review',
+            'admin:semester:close',
+            'admin:backup:manage'
+          ]
+        : [
+            'teacher:all',
+            'teacher:operational:write',
+            'teacher:submissions:create',
+            'teacher:profile:update'
+          ]
+
+    const now = new Date().toISOString()
+    return {
+      userId: user.id,
+      username: user.username,
+      displayName,
+      email,
+      role: user.role,
+      status: user.status,
+      teacherId: isGuru ? user.teacherId : undefined,
+      teacherName: isGuru ? teacher?.name : undefined,
+      teacherNip: isGuru ? teacher?.nip : undefined,
+      permissions,
+      sessionState,
+      authenticatedAt: now,
+      lastActiveAt: now,
+      source
+    }
   }
 
   /**
@@ -85,6 +145,14 @@ export class AuthService {
   }
 
   /**
+   * Get current canonical UserIdentity
+   */
+  public getCurrentIdentity(): UserIdentity | null {
+    const session = this.getCurrentSession()
+    return session?.identity || null
+  }
+
+  /**
    * Directly set active session (used for testing or session restore)
    */
   public setSessionForTesting(session: SessionData | null): void {
@@ -100,8 +168,19 @@ export class AuthService {
   }
 
   /**
-   * Verify session validity against IndexedDB
-   * Re-checks user existence, active status, and teacher status
+   * Restore and verify active session (e.g. on application reload or offline restart)
+   */
+  public async restoreSession(): Promise<UserIdentity | null> {
+    const verified = await this.verifySession()
+    if (!verified) {
+      return null
+    }
+    return verified.identity || null
+  }
+
+  /**
+   * Verify session validity against local & cloud state
+   * Re-checks user existence, active status, and linked teacher status
    */
   public async verifySession(): Promise<SessionData | null> {
     const session = this.getCurrentSession()
@@ -116,17 +195,33 @@ export class AuthService {
         return null
       }
 
+      let teacher: TeacherEntity | undefined
       if (user.role === 'GURU') {
         if (!user.teacherId) {
           await this.logout()
           return null
         }
-        const teacher = await repositories.teachers.findById(user.teacherId)
-        if (!teacher || teacher.status !== 'ACTIVE') {
+        const teacherEntity = await repositories.teachers.findById(user.teacherId)
+        if (!teacherEntity || teacherEntity.status !== 'ACTIVE') {
           await this.logout()
           return null
         }
+        teacher = teacherEntity
       }
+
+      const isOnline = connectivityManager.isOnline.value
+      const sessionState: AuthState = isOnline ? 'authenticated' : 'offline'
+      const identity = this.buildIdentity(
+        user,
+        teacher,
+        isOnline ? 'SUPABASE' : 'OFFLINE_CACHE',
+        sessionState
+      )
+
+      session.identity = identity
+      session.teacherName = teacher?.name
+      this.currentSession = session
+      this.saveSessionToStorage(session)
 
       return session
     } catch (error) {
@@ -145,6 +240,7 @@ export class AuthService {
     if (!username || !password) {
       return {
         success: false,
+        errorCode: 'INVALID_CREDENTIALS',
         message: 'Username dan password wajib diisi.'
       }
     }
@@ -153,8 +249,19 @@ export class AuthService {
       // 1. Find user in UserRepository
       const user = await repositories.users.findByUsername(username)
       if (!user) {
+        // If device is offline and user is not cached locally, notify user that first-time login needs connection
+        const isOnline = connectivityManager.isOnline.value
+        if (!isOnline) {
+          return {
+            success: false,
+            errorCode: 'OFFLINE_FIRST_LOGIN_REQUIRED',
+            message: 'Koneksi internet diperlukan untuk login pertama kali di perangkat ini.'
+          }
+        }
+
         return {
           success: false,
+          errorCode: 'INVALID_CREDENTIALS',
           message: 'Username atau password salah.'
         }
       }
@@ -163,6 +270,7 @@ export class AuthService {
       if (user.status !== 'ACTIVE') {
         return {
           success: false,
+          errorCode: 'INACTIVE_ACCOUNT',
           message: 'Akun tidak aktif. Silakan hubungi Administrator.'
         }
       }
@@ -172,6 +280,7 @@ export class AuthService {
       if (!valid) {
         return {
           success: false,
+          errorCode: 'INVALID_CREDENTIALS',
           message: 'Username atau password salah.'
         }
       }
@@ -184,6 +293,7 @@ export class AuthService {
         if (isDefaultAdmin || isDefaultGuru) {
           return {
             success: false,
+            errorCode: 'INVALID_CREDENTIALS',
             message:
               'Demi alasan keamanan, kredensial default (admin123/guru123) diblokir di lingkungan Produksi. Silakan ubah password Anda di mode Development terlebih dahulu atau hubungi Administrator.'
           }
@@ -208,6 +318,7 @@ export class AuthService {
       if (user.role !== 'ADMIN' && user.role !== 'GURU') {
         return {
           success: false,
+          errorCode: 'INVALID_CREDENTIALS',
           message: 'Role pengguna tidak valid.'
         }
       }
@@ -218,6 +329,7 @@ export class AuthService {
         if (!user.teacherId) {
           return {
             success: false,
+            errorCode: 'INVALID_CREDENTIALS',
             message: 'Akun guru belum terhubung dengan data guru di sistem.'
           }
         }
@@ -225,12 +337,14 @@ export class AuthService {
         if (!teacherEntity) {
           return {
             success: false,
+            errorCode: 'INVALID_CREDENTIALS',
             message: 'Data guru yang terhubung tidak ditemukan.'
           }
         }
         if (teacherEntity.status !== 'ACTIVE') {
           return {
             success: false,
+            errorCode: 'INACTIVE_TEACHER',
             message: 'Status data guru yang terhubung tidak aktif.'
           }
         }
@@ -244,7 +358,12 @@ export class AuthService {
         updatedAt: now
       })
 
-      // 8. Create Session
+      // 8. Build Canonical UserIdentity & Session
+      const isOnline = connectivityManager.isOnline.value
+      const source = isOnline ? 'SUPABASE' : 'OFFLINE_CACHE'
+      const sessionState: AuthState = isOnline ? 'authenticated' : 'offline'
+      const identity = this.buildIdentity(user, teacher, source, sessionState)
+
       const session: SessionData = {
         sessionId: `sess_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`,
         userId: user.id,
@@ -252,7 +371,8 @@ export class AuthService {
         role: user.role,
         teacherId: user.teacherId,
         teacherName: teacher?.name,
-        authenticatedAt: now
+        authenticatedAt: now,
+        identity
       }
 
       this.currentSession = session
@@ -262,6 +382,7 @@ export class AuthService {
         success: true,
         message: 'Login berhasil.',
         session,
+        identity,
         user,
         teacher
       }
@@ -269,6 +390,7 @@ export class AuthService {
       console.error('[AuthService] Login execution error:', error)
       return {
         success: false,
+        errorCode: 'UNKNOWN_ERROR',
         message: 'Terjadi kesalahan sistem saat verifikasi akun.'
       }
     }
@@ -276,8 +398,17 @@ export class AuthService {
 
   /**
    * Log out active session
+   * Clears session & tokens, but preserves offline IndexedDB operational data!
    */
   public async logout(): Promise<void> {
+    try {
+      const client = getSupabaseClient()
+      if (client) {
+        await client.auth.signOut().catch(() => {})
+      }
+    } catch {
+      // Ignore signOut network errors
+    }
     this.currentSession = null
     this.saveSessionToStorage(null)
   }

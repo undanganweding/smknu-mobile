@@ -36,9 +36,7 @@
  * @author Art Design Pro Team
  */
 import type { Router, RouteLocationNormalized, NavigationGuardNext } from 'vue-router'
-import { nextTick } from 'vue'
 import NProgress from 'nprogress'
-import { useSettingStore } from '@/store/modules/setting'
 import { useUserStore } from '@/store/modules/user'
 import { useMenuStore } from '@/store/modules/menu'
 import { setWorktab } from '@/utils/navigation'
@@ -127,12 +125,8 @@ export function setupBeforeEachGuard(router: Router): void {
  * 关闭 loading 效果
  */
 function closeLoading(): void {
-  if (pendingLoading) {
-    nextTick(() => {
-      loadingService.hideLoading()
-      pendingLoading = false
-    })
-  }
+  loadingService.hideLoading()
+  pendingLoading = false
 }
 
 /**
@@ -144,13 +138,10 @@ async function handleRouteGuard(
   next: NavigationGuardNext,
   router: Router
 ): Promise<void> {
-  const settingStore = useSettingStore()
   const userStore = useUserStore()
 
-  // 启动进度条
-  if (settingStore.showNprogress) {
-    NProgress.start()
-  }
+  // 启动顶部进度条提供即时加载反馈
+  NProgress.start()
 
   // 1. 检查登录状态
   if (!handleLoginStatus(to, userStore, next)) {
@@ -233,7 +224,7 @@ function handleLoginStatus(
   }
 
   // 2. 已登录用户访问登录页 -> 自动重定向到对应角色的控制台
-  if (to.path === RoutesAlias.Login) {
+  if (to.path === RoutesAlias.Login || to.path === '/login') {
     const role = session?.role || userStore.info?.roles?.[0]
     if (role === 'GURU') {
       next({ path: '/teacher/dashboard', replace: true })
@@ -243,7 +234,20 @@ function handleLoginStatus(
     return false
   }
 
-  // 3. 严格 RBAC 规则校验（即使直接在地址栏手动输入 URL 也必须拦截）
+  // 3. /guru/* alias support -> canonical /teacher/* path
+  if (to.path.startsWith('/guru')) {
+    const canonicalTeacherPath = to.path.replace(/^\/guru/, '/teacher')
+    const role = session?.role || userStore.info?.roles?.[0]
+    if (role !== 'GURU') {
+      console.warn(`[RBAC] Access denied to guru alias '${to.path}' for role '${role}'.`)
+      next({ name: 'Exception403', replace: true })
+      return false
+    }
+    next({ path: canonicalTeacherPath, query: to.query, hash: to.hash, replace: true })
+    return false
+  }
+
+  // 4. 严格 RBAC 规则校验（即使直接在地址栏手动输入 URL 也必须拦截）
   const role = session?.role || userStore.info?.roles?.[0]
 
   // /admin/* -> Hanya ADMIN
@@ -332,6 +336,11 @@ async function handleDynamicRoutes(
     menuStore.setMenuList(menuList)
     menuStore.addRemoveRouteFns(routeRegistry?.getRemoveRouteFns() || [])
 
+    // 预热所有路由组件（闲时加载），实现侧边栏菜单切换零等待
+    import('../core/ComponentLoader').then(({ componentLoader }) => {
+      componentLoader.prefetchAll()
+    })
+
     // 6. 保存 iframe 路由
     IframeRouteManager.getInstance().save()
 
@@ -341,6 +350,7 @@ async function handleDynamicRoutes(
     // 8. 静态路由不依赖菜单权限，初始化后直接恢复目标地址。
     if (isStaticRoute(to.path)) {
       routeInitInProgress = false
+      closeLoading()
       next({
         path: to.path,
         query: to.query,
@@ -362,10 +372,8 @@ async function handleDynamicRoutes(
     routeInitInProgress = false
 
     // 9. 重新导航到目标路由
+    closeLoading()
     if (!hasPermission) {
-      // 无权限访问，跳转到首页
-      closeLoading()
-
       // 输出警告信息
       console.warn(`[RouteGuard] 用户无权限访问路径: ${to.path}，已跳转到首页`)
 
