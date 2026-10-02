@@ -1,0 +1,266 @@
+{
+  "httpMsg": {
+    "unauthorized": "Akses tidak diizinkan, silakan login kembali",
+    "forbidden": "Akses ke sumber daya ini dilarang",
+    "notFound": "Sumber daya yang diminta tidak ditemukan",
+    "methodNotAllowed": "Metode permintaan tidak diizinkan",
+    "requestTimeout": "Waktu permintaan habis, silakan coba lagi nanti",
+    "internalServerError": "Kesalahan server internal, silakan coba lagi nanti",
+    "badGateway": "Kesalahan bad gateway, silakan coba lagi nanti",
+    "serviceUnavailable": "Layanan sementara tidak tersedia, silakan coba lagi nanti",
+    "gatewayTimeout": "Gateway timeout, silakan coba lagi nanti",
+    "requestCancelled": "Permintaan dibatalkan",
+    "networkError": "Kesalahan koneksi jaringan, periksa koneksi Anda",
+    "requestFailed": "Permintaan gagal",
+    "requestConfigError": "Kesalahan konfigurasi permintaan"
+  },
+  "topBar": {
+    "search": {
+      "title": "Cari Menu/Fitur"
+    },
+    "user": {
+      "userCenter": "Profil Saya",
+      "docs": "Dokumentasi",
+      "github": "Github",
+      "lockScreen": "Kunci Layar",
+      "logout": "Keluar"
+    },
+    "guide": {
+      "title": "Klik di sini untuk melihat",
+      "theme": "Gaya Tema",
+      "menu": "Buka Menu Atas",
+      "description": "Konfigurasi Lainnya"
+    }
+  },
+  "common": {
+    "tips": "Petunjuk",
+    "cancel": "Batal",
+    "confirm": "Konfirmasi",
+    "logOutTips": "Apakah Anda yakin ingin keluar?"
+  },
+  "search": {
+    "placeholder": "Cari halaman atau fitur",
+    "historyTitle": "Riwayat Pencarian",
+    "switchKeydown": "Navigasi",
+    "selectKeydown": "Pilih",
+    "exitKeydown": "Tutup"
+  },
+  "setting": {
+    "menuType": {
+      "title": "Tata Letak Menu",
+      "list": ["Vertikal", "Horizontal", "Kombinasi", "Ganda"]
+    },
+    "theme": {
+      "title": "Gaya Tema",
+      "list": ["Terang", "Gelap", "Sistem"]
+    },
+    "menu": {
+      "title": "Gaya Menu"
+    },
+    "color": {
+      "title": "Warna Utama Sistem"
+    },
+    "box": {
+      "title": "Gaya Kotak",
+      "list": ["Garis Tepi", "Bayangan"]
+    },
+    "container": {
+      "title": "Lebar Kontainer",
+      "list": ["Penuh", "Tergulung"]
+    },
+    "basics": {
+      "title": "Konfigurasi Dasar",
+      "list": {
+        "multiTab": "Tampilkan Tab Kerja",
+        "accordion": "Mode Akordion Sidebar",
+        "collapseSidebar": "Tombol Lipat Sidebar",
+        "reloadPage": "Tombol Muat Ulang Halaman",
+        "fastEnter": "Akses Cepat",
+        "breadcrumb": "Navigasi Breadcrumb",
+        "language": "Pilihan Bahasa",
+        "progressBar": "Bilah Kemajuan Atas",
+        "weakMode": "Mode Warna Khusus",
+        "watermark": "Watermark Global",
+        "menuWidth": "Lebar Menu",
+        "tabStyle": "Gaya Tab",
+        "pageTransition": "Animasi Halaman",
+        "borderRadius": "Sudut Melengkung"
+      }
+    },
+    "tabStyle": {
+      "default": "Default",
+      "card": "Kartu",
+      "google": "Chrome"
+    },
+    "transition": {
+      "list": {
+        "none": "Tanpa Animasi",
+        "fade": "Memudar",
+        "slideLeft": "Geser Kiri",
+        "slideBottom": "Geser Bawah",
+        "slideTop": "Geser Atas"
+      }
+    },
+    "actions": {
+      "resetConfig": "Riset Konfigurasi",
+      "copyConfig": "Salin Konfigurasi",
+      "copySuccess": "Konfigurasi berhasil disalin ke papan klip",
+      "copyFailed": "Gagal menyalin konfigurasi",
+      "resetFailed": "Gagal meriset konfigurasi"
+    }
+  },
+  "notice": {
+    "title": "Pemberitahuan",
+    "btnRead": "Tandai dibaca",
+    "bar": ["Pemberitahuan", "Pesan", "Tugas"],
+    "text": ["Belum ada "],
+    "viewAll": "Lihat Semua"
+  },
+  "worktab": {
+    "btn": {
+      "refresh": "Muat Ulang",
+      "fixed": "Sematkan",
+      "unfixed": "Lepas Sematan",
+      "closeLeft": "Tutup Kiri",
+      "closeRight": "Tutup Kanan",
+      "closeOther": "Tutup Lainnya",
+      "closeAll": "Tutup Semua"
+    }
+  },
+  "login": {
+    "leftView": {
+      "title": "Guru Offline — SMK NU Ungaran",
+      "subTitle": "Sistem Informasi Manajemen Akademik & Operasional Guru Rekapitulasi Pembelajaran"
+    },
+    "title": "Selamat Datang",
+    "subTitle": "Silakan masukkan akun dan kata sandi Anda",
+    "roles": {
+      "super": "Super Admin",
+      "admin": "Administrator",
+      "user": "Guru / Pengguna"
+    },
+    "placeholder": {
+      "username": "Masukkan username / NIP",
+      "password": "Masukkan kata sandi",
+      "slider": "Geser untuk verifikasi"
+    },
+    "sliderText": "Geser untuk verifikasi",
+    "sliderSuccessText": "Verifikasi berhasil",
+    "rememberPwd": "Ingat saya",
+    "forgetPwd": "Lupa kata sandi",
+    "btnText": "Masuk",
+    "noAccount": "Belum memiliki akun?",
+    "register": "Daftar",
+    "success": {
+      "title": "Login Berhasil",
+      "message": "Selamat bekerja kembali"
+    }
+  },
+  "forgetPassword": {
+    "title": "Lupa Kata Sandi?",
+    "subTitle": "Masukkan email Anda untuk meriset kata sandi",
+    "placeholder": "Masukkan alamat email Anda",
+    "submitBtnText": "Kirim",
+    "backBtnText": "Kembali"
+  },
+  "register": {
+    "title": "Buat Akun Baru",
+    "subTitle": "Selamat datang, silakan lengkapi data untuk mendaftar",
+    "placeholder": {
+      "username": "Masukkan username",
+      "password": "Masukkan kata sandi",
+      "confirmPassword": "Ulangi kata sandi"
+    },
+    "rule": {
+      "confirmPasswordRequired": "Konfirmasi kata sandi wajib diisi",
+      "passwordMismatch": "Kata sandi tidak cocok!",
+      "usernameLength": "Panjang username 3-20 karakter",
+      "passwordLength": "Panjang kata sandi minimal 6 karakter",
+      "agreementRequired": "Menyetujui kebijakan privasi"
+    },
+    "agreeText": "Saya menyetujui",
+    "privacyPolicy": "Kebijakan Privasi",
+    "submitBtnText": "Daftar",
+    "hasAccount": "Sudah memiliki akun?",
+    "toLogin": "Masuk sekarang"
+  },
+  "lockScreen": {
+    "pwdError": "Kata sandi salah",
+    "lock": {
+      "inputPlaceholder": "Masukkan kata sandi kunci layar",
+      "btnText": "Kunci"
+    },
+    "unlock": {
+      "inputPlaceholder": "Masukkan kata sandi untuk membuka",
+      "btnText": "Buka Kunci",
+      "backBtnText": "Kembali ke Login"
+    }
+  },
+  "greeting": {
+    "dawn": "Selamat Dini Hari!",
+    "morning": "Selamat Pagi!",
+    "afternoon": "Selamat Siang!",
+    "evening": "Selamat Malam!"
+  },
+  "exceptionPage": {
+    "gohome": "Kembali ke Beranda",
+    "403": "Maaf, Anda tidak memiliki izin untuk mengakses halaman ini",
+    "404": "Maaf, halaman yang Anda cari tidak ditemukan",
+    "500": "Maaf, terjadi kesalahan pada server"
+  },
+  "menus": {
+    "login": {
+      "title": "Login"
+    },
+    "register": {
+      "title": "Pendaftaran"
+    },
+    "forgetPassword": {
+      "title": "Lupa Password"
+    },
+    "outside": {
+      "title": "Halaman Eksternal"
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "console": "Konsol Utama",
+      "analysis": "Analisis Data",
+      "ecommerce": "E-Commerce"
+    },
+    "system": {
+      "title": "Pengaturan Sistem",
+      "user": "Manajemen Pengguna",
+      "role": "Manajemen Peran",
+      "userCenter": "Profil Pengguna",
+      "menu": "Manajemen Menu"
+    }
+  },
+  "table": {
+    "form": {
+      "reset": "Riset",
+      "submit": "Simpan"
+    },
+    "searchBar": {
+      "reset": "Riset",
+      "search": "Cari",
+      "expand": "Buka",
+      "collapse": "Tutup",
+      "searchInputPlaceholder": "Masukkan kata kunci",
+      "searchSelectPlaceholder": "Pilih opsi"
+    },
+    "selection": "Pilih",
+    "sizeOptions": {
+      "small": "Ringkas",
+      "default": "Standar",
+      "large": "Leluasa"
+    },
+    "column": {
+      "selection": "Pilih",
+      "expand": "Detail",
+      "index": "No"
+    },
+    "zebra": "Zebra",
+    "border": "Garis Tepi",
+    "headerBackground": "Warna Header"
+  }
+}

@@ -5,24 +5,30 @@
   $colors: (
     'white': #ffffff,
     'black': #000000,
+    'primary': (
+      'base': #059669
+    ),
     'success': (
-      'base': #13deb9
+      'base': #059669
     ),
     'warning': (
-      'base': #ffae1f
+      'base': #d97706
     ),
     'danger': (
-      'base': #ff4d4f
+      'base': #dc2626
     ),
     'error': (
-      'base': #fa896b
+      'base': #dc2626
+    ),
+    'info': (
+      'base': #475569
     )
   ),
   $button: (
     'hover-bg-color': var(--el-color-primary-light-9),
     'hover-border-color': var(--el-color-primary),
-    'border-color': var(--el-color-primary),
-    'text-color': var(--el-color-primary)
+    'border-color': #dcdfe6,
+    'text-color': #606266
   ),
   $messagebox: (
     'border-radius': '12px'

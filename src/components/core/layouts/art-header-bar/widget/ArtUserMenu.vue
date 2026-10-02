@@ -20,7 +20,7 @@
       >
         <img
           class="size-8.5 rounded-full object-cover max-sm:w-6.5 max-sm:h-6.5 border border-slate-200 dark:border-slate-700"
-          src="@imgs/user/avatar.webp"
+          :src="userAvatar"
           alt="Foto Profil Pengguna"
         />
       </button>
@@ -30,7 +30,7 @@
         <div class="flex items-center pb-2.5 px-0 border-b border-g-300/80">
           <img
             class="w-10 h-10 mr-3 overflow-hidden rounded-full border border-slate-200 dark:border-slate-700 object-cover"
-            src="@imgs/user/avatar.webp"
+            :src="userAvatar"
             alt="Foto Profil"
           />
           <div class="w-[calc(100%-52px)]">
@@ -131,12 +131,14 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed } from 'vue'
+  import { ref, computed, onMounted } from 'vue'
   import { storeToRefs } from 'pinia'
   import { useRouter } from 'vue-router'
   import { ElMessageBox } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
-  import { authorizationService } from '@/core/services/auth'
+  import { authorizationService, authService } from '@/core/services/auth'
+  import { repositories } from '@/core/repositories'
+  import defaultAvatar from '@/assets/images/user/avatar.webp'
 
   defineOptions({ name: 'ArtUserMenu' })
 
@@ -145,6 +147,26 @@
 
   const { getUserInfo: userInfo } = storeToRefs(userStore)
   const userMenuPopover = ref()
+
+  const userAvatar = computed(() => {
+    return userInfo.value.avatar || defaultAvatar
+  })
+
+  onMounted(async () => {
+    if (!userInfo.value.avatar) {
+      const session = authService.getCurrentSession()
+      if (session?.teacherId) {
+        try {
+          const t = await repositories.teachers.findById(session.teacherId)
+          if (t?.photo) {
+            userStore.info.avatar = t.photo
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  })
 
   const isTeacher = computed(() => {
     if (authorizationService.isTeacher()) return true
@@ -178,8 +200,8 @@
           customClass: 'login-out-dialog'
         }
       )
-        .then(() => {
-          userStore.logOut()
+        .then(async () => {
+          await userStore.logOut()
         })
         .catch(() => {
           // user cancelled

@@ -34,10 +34,13 @@ export class HybridBaseRepository<T extends { id: string }> extends BaseIndexedD
           await super.create(entity)
           return entity
         }
-        console.warn(
-          `[HybridRepo] Supabase insert failed for ${this.entityName}, falling back to queue:`,
-          error
-        )
+        console.warn(`[HybridRepo] Supabase insert failed for ${this.entityName}:`, error)
+        if (error.message?.includes('row-level security policy') || error.code === '42501') {
+          console.info(
+            `[HybridRepo] RLS restricted for ${this.entityName}. Preserving in local IndexedDB without queueing.`
+          )
+          return await super.create(entity)
+        }
       } catch (networkErr) {
         console.warn(
           `[HybridRepo] Network error on insert ${this.entityName}, queueing offline:`,
@@ -54,14 +57,73 @@ export class HybridBaseRepository<T extends { id: string }> extends BaseIndexedD
   }
 
   /**
-   * CREATE BATCH
+   * CREATE BATCH: Fast bulk creation with single batch enqueueing
    */
   public override async createBatch(entities: T[]): Promise<T[]> {
-    const results: T[] = []
-    for (const ent of entities) {
-      results.push(await this.create(ent))
+    if (entities.length === 0) return []
+    const supabase = getSupabaseClient()
+    const isOnline = connectivityManager.isOnline.value
+
+    if (isOnline && supabase) {
+      try {
+        const snakePayloads = entities.map((e) => this.toSnakeCase(e))
+        const { error } = await supabase.from(this.storeName).upsert(snakePayloads)
+        if (!error) {
+          return await super.createBatch(entities)
+        }
+        if (error.message?.includes('row-level security policy') || error.code === '42501') {
+          return await super.createBatch(entities)
+        }
+      } catch (networkErr) {
+        console.warn(`[HybridRepo] Network error on batch create ${this.entityName}:`, networkErr)
+      }
     }
-    return results
+
+    const localSaved = await super.createBatch(entities)
+    const itemsToEnqueue = entities.map((e) => ({
+      entity: this.entityName,
+      entityId: e.id,
+      operation: 'CREATE' as const,
+      payload: e
+    }))
+    await pendingMutationQueue.enqueueBatch(itemsToEnqueue)
+    await connectivityManager.refreshPendingCount()
+    return localSaved
+  }
+
+  /**
+   * UPDATE BATCH: Fast bulk update with single batch enqueueing
+   */
+  public async updateBatch(updatesList: Array<{ id: string; updates: Partial<T> }>): Promise<T[]> {
+    if (updatesList.length === 0) return []
+    const localUpdated = await super.updateBatch(updatesList)
+    const supabase = getSupabaseClient()
+    const isOnline = connectivityManager.isOnline.value
+
+    if (isOnline && supabase) {
+      try {
+        const snakePayloads = localUpdated.map((e) => this.toSnakeCase(e))
+        const { error } = await supabase.from(this.storeName).upsert(snakePayloads)
+        if (!error) {
+          return localUpdated
+        }
+        if (error.message?.includes('row-level security policy') || error.code === '42501') {
+          return localUpdated
+        }
+      } catch (networkErr) {
+        console.warn(`[HybridRepo] Network error on batch update ${this.entityName}:`, networkErr)
+      }
+    }
+
+    const itemsToEnqueue = localUpdated.map((e) => ({
+      entity: this.entityName,
+      entityId: e.id,
+      operation: 'UPDATE' as const,
+      payload: e
+    }))
+    await pendingMutationQueue.enqueueBatch(itemsToEnqueue)
+    await connectivityManager.refreshPendingCount()
+    return localUpdated
   }
 
   /**
@@ -87,10 +149,13 @@ export class HybridBaseRepository<T extends { id: string }> extends BaseIndexedD
           await super.update(id, updates)
           return merged
         }
-        console.warn(
-          `[HybridRepo] Supabase update failed for ${this.entityName}, queueing offline:`,
-          error
-        )
+        console.warn(`[HybridRepo] Supabase update failed for ${this.entityName}:`, error)
+        if (error.message?.includes('row-level security policy') || error.code === '42501') {
+          console.info(
+            `[HybridRepo] RLS restricted for update on ${this.entityName}. Preserving in local IndexedDB.`
+          )
+          return await super.update(id, updates)
+        }
       } catch (networkErr) {
         console.warn(
           `[HybridRepo] Network error on update ${this.entityName}, queueing offline:`,

@@ -43,6 +43,7 @@ export interface IRepository<T extends { id: string }> {
   create(entity: T): Promise<T>
   createBatch(entities: T[]): Promise<T[]>
   update(id: string, updates: Partial<T>): Promise<T>
+  updateBatch(updatesList: Array<{ id: string; updates: Partial<T> }>): Promise<T[]>
   save(entity: T): Promise<T>
   delete(id: string): Promise<boolean>
   count(filter?: QueryFilter<T>): Promise<number>

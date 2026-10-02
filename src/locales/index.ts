@@ -28,6 +28,7 @@ import { getSystemStorage } from '@/utils/storage'
 import { StorageKeyManager } from '@/utils/storage/storage-key-manager'
 
 // 同步导入语言文件
+import idMessages from './langs/id.json'
 import enMessages from './langs/en.json'
 import zhMessages from './langs/zh.json'
 
@@ -40,6 +41,7 @@ const storageKeyManager = new StorageKeyManager()
  * 语言消息对象
  */
 const messages = {
+  [LanguageEnum.ID]: idMessages,
   [LanguageEnum.EN]: enMessages,
   [LanguageEnum.ZH]: zhMessages
 }
@@ -49,8 +51,9 @@ const messages = {
  * 用于语言切换下拉框
  */
 export const languageOptions = [
-  { value: LanguageEnum.ZH, label: '简体中文' },
-  { value: LanguageEnum.EN, label: 'English' }
+  { value: LanguageEnum.ID, label: 'Bahasa Indonesia' },
+  { value: LanguageEnum.EN, label: 'English' },
+  { value: LanguageEnum.ZH, label: '简体中文' }
 ]
 
 /**
@@ -87,8 +90,8 @@ const getDefaultLanguage = (): LanguageEnum => {
   }
 
   // 返回默认语言
-  console.debug('[i18n] 使用默认语言:', LanguageEnum.ZH)
-  return LanguageEnum.ZH
+  console.debug('[i18n] 使用默认语言:', LanguageEnum.ID)
+  return LanguageEnum.ID
 }
 
 /**
@@ -98,7 +101,7 @@ const i18nOptions: I18nOptions = {
   locale: getDefaultLanguage(),
   legacy: false,
   globalInjection: true,
-  fallbackLocale: LanguageEnum.ZH,
+  fallbackLocale: LanguageEnum.ID,
   messages
 }
 

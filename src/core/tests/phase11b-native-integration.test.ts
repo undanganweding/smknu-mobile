@@ -138,11 +138,19 @@ export async function runPhase11bTests() {
   assert(googleWorkspaceService.getAccessToken() === 'expired-token-xyz', 'Token should be set')
 
   const originalFetch = globalThis.fetch
-  globalThis.fetch = async () =>
-    new Response('Unauthorized token', {
-      status: 401,
-      statusText: 'Unauthorized'
+  try {
+    Object.defineProperty(globalThis, 'fetch', {
+      value: async () =>
+        new Response('Unauthorized token', {
+          status: 401,
+          statusText: 'Unauthorized'
+        }),
+      writable: true,
+      configurable: true
     })
+  } catch (err) {
+    console.debug('[Test] Mock fetch override skipped:', err)
+  }
 
   let caught401 = false
   try {
@@ -157,7 +165,15 @@ export async function runPhase11bTests() {
   console.log('✓ 401 Token invalidation verified: cached token is cleared and service disabled.')
 
   // Restore fetch and mock mode
-  globalThis.fetch = originalFetch
+  try {
+    Object.defineProperty(globalThis, 'fetch', {
+      value: originalFetch,
+      writable: true,
+      configurable: true
+    })
+  } catch (err) {
+    console.debug('[Test] Restore fetch skipped:', err)
+  }
   googleWorkspaceService.setMockMode(true)
 
   console.log('\n======================================================================')

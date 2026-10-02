@@ -58,39 +58,33 @@ export class ComponentLoader {
   }
 
   /**
-   * 在后台闲时（Idle）平滑预热所有路由组件，实现侧边栏与页面零等待
+   * Safe idle prefetcher for core routes to prevent network congestion
    */
   prefetchAll(): void {
-    const keys = Object.keys(this.modules)
-    if (keys.length === 0 || typeof window === 'undefined') return
+    if (typeof window === 'undefined') return
 
-    let currentIndex = 0
+    // Priority list of primary operational views to prefetch gently
+    const priorityPaths = [
+      '/admin/dashboard',
+      '/teacher/dashboard',
+      '/admin/students',
+      '/admin/teachers',
+      '/admin/schedules',
+      '/admin/data-management'
+    ]
 
+    let index = 0
     const scheduleNext = () => {
-      if (currentIndex >= keys.length) return
-
-      const key = keys[currentIndex++]
-      const loader = this.modules[key]
-      if (loader) {
-        loader()
-          .catch(() => {})
-          .finally(() => {
-            if ('requestIdleCallback' in window) {
-              ;(window as any).requestIdleCallback(() => scheduleNext(), { timeout: 1200 })
-            } else {
-              setTimeout(scheduleNext, 25)
-            }
-          })
-      } else {
-        scheduleNext()
-      }
+      if (index >= priorityPaths.length) return
+      const path = priorityPaths[index++]
+      this.prefetch(path)
+        .catch(() => {})
+        .finally(() => {
+          setTimeout(scheduleNext, 300)
+        })
     }
 
-    if ('requestIdleCallback' in window) {
-      ;(window as any).requestIdleCallback(() => scheduleNext(), { timeout: 1500 })
-    } else {
-      setTimeout(scheduleNext, 60)
-    }
+    setTimeout(scheduleNext, 1000)
   }
 
   /**

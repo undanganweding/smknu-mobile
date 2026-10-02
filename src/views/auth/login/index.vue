@@ -116,6 +116,7 @@
   import { useRouter, useRoute } from 'vue-router'
   import { useUserStore } from '@/store/modules/user'
   import { authService } from '@/core/services/auth'
+  import { resetRouterState } from '@/router/guards/beforeEach'
   import { connectivityManager } from '@/core/services/sync/ConnectivityManager'
   import type { AuthState } from '@/core/types'
   import {
@@ -264,19 +265,31 @@
         componentLoader.prefetchAll()
       })
 
-      // 4. Role-based redirect
+      // Reset dynamic route state to ensure routes match the newly logged in role
+      resetRouterState(0)
+
+      // 4. Role-based redirect with strict role validation
       const queryRedirect = route.query.redirect as string
-      if (queryRedirect && !queryRedirect.includes('/auth/login')) {
-        router.push(queryRedirect)
-      } else {
-        if (res.session.role === 'ADMIN') {
-          router.push('/admin/dashboard')
-        } else if (res.session.role === 'GURU') {
-          router.push('/teacher/dashboard')
-        } else {
-          router.push('/admin/dashboard')
+      let defaultPath = res.session.role === 'GURU' ? '/teacher/dashboard' : '/admin/dashboard'
+      let targetPath = defaultPath
+
+      if (
+        queryRedirect &&
+        !queryRedirect.includes('/auth/login') &&
+        !queryRedirect.includes('/login')
+      ) {
+        // Only respect queryRedirect if it actually matches the logged-in role
+        if (
+          res.session.role === 'GURU' &&
+          (queryRedirect.startsWith('/teacher') || queryRedirect.startsWith('/guru'))
+        ) {
+          targetPath = queryRedirect
+        } else if (res.session.role === 'ADMIN' && queryRedirect.startsWith('/admin')) {
+          targetPath = queryRedirect
         }
       }
+
+      router.push(targetPath)
     } catch (error: any) {
       console.error('[Login] Error during local login:', error)
       errorMessage.value = error?.message || 'Terjadi kesalahan sistem saat proses login.'

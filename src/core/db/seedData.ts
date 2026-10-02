@@ -5,8 +5,9 @@
  */
 
 import { repositories } from '../repositories'
+import { IndexedDbStudentRepository } from '../repositories/indexeddb/repositories'
 import { hashPassword } from '../security/password'
-import { VERIFIED_GRADE_X_LEGGERS } from '../services/master/ClassLeggerData'
+import { getStandardLeggerRosterByLevel } from '../services/master/ClassLeggerData'
 import type {
   SchoolIdentityEntity,
   AcademicYearEntity,
@@ -225,6 +226,153 @@ export function getVerifiedInitialSchedules(academicYearId: string, now: string)
   ]
 }
 
+export async function ensureAllClassStudentsExist(): Promise<number> {
+  try {
+    const allClasses = await repositories.classes.findAll()
+    if (allClasses.length === 0) return 0
+
+    const allExistingStudents = await repositories.students.findAll()
+
+    // Audit if existing database contains old dummy data ("Siswa ...") or missing fields
+    const hasUnrealisticData = allExistingStudents.some(
+      (s) => s.name.startsWith('Siswa ') || !s.nisn || !s.parentPhone || !s.address
+    )
+
+    const ALL_SCHOOL_LEGGERS = [
+      ...getStandardLeggerRosterByLevel('X'),
+      ...getStandardLeggerRosterByLevel('XI'),
+      ...getStandardLeggerRosterByLevel('XII')
+    ]
+
+    const leggerMap = new Map<string, (typeof ALL_SCHOOL_LEGGERS)[0]>()
+    for (const leg of ALL_SCHOOL_LEGGERS) {
+      leggerMap.set(leg.className.toUpperCase().replace(/\s+/g, '-'), leg)
+      leggerMap.set(leg.classKey.toUpperCase().replace(/\s+/g, '-'), leg)
+      leggerMap.set(leg.className.toUpperCase(), leg)
+    }
+
+    const now = new Date().toISOString()
+
+    if (hasUnrealisticData || allExistingStudents.length < 500) {
+      const localStudentRepo = new IndexedDbStudentRepository()
+      await localStudentRepo.clear()
+
+      const newStudentsToCreate: StudentEntity[] = []
+      for (const cls of allClasses) {
+        const normalizedName = cls.name.toUpperCase().replace(/\s+/g, '-')
+        const tpl = leggerMap.get(normalizedName) || leggerMap.get(cls.name.toUpperCase())
+
+        if (tpl && tpl.students && tpl.students.length > 0) {
+          for (const s of tpl.students) {
+            const cleanNis = s.nis || `${cls.name.replace(/[^a-zA-Z0-9]/g, '')}-${s.no}`
+            newStudentsToCreate.push({
+              id: `std_${cleanNis.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${cls.id}`,
+              nis: cleanNis,
+              nisn: s.nisn,
+              name: s.name,
+              gender: s.gender || 'L',
+              birthPlace: s.birthPlace,
+              birthDate: s.birthDate,
+              parentPhone: s.parentPhone,
+              address: s.address,
+              classId: cls.id,
+              status: 'ACTIVE',
+              createdAt: now,
+              updatedAt: now
+            })
+          }
+        }
+      }
+
+      if (newStudentsToCreate.length > 0) {
+        await localStudentRepo.createBatch(newStudentsToCreate)
+      }
+      return newStudentsToCreate.length
+    }
+
+    const classStudentsMap = new Map<string, StudentEntity[]>()
+    const usedNisSet = new Set<string>()
+
+    for (const s of allExistingStudents) {
+      if (s.nis) usedNisSet.add(s.nis)
+      if (!classStudentsMap.has(s.classId)) {
+        classStudentsMap.set(s.classId, [])
+      }
+      classStudentsMap.get(s.classId)!.push(s)
+    }
+
+    const newStudentsToCreate: StudentEntity[] = []
+    const studentsToUpdate: StudentEntity[] = []
+
+    for (const cls of allClasses) {
+      const existingForClass = classStudentsMap.get(cls.id) || []
+      const normalizedName = cls.name.toUpperCase().replace(/\s+/g, '-')
+      const tpl = leggerMap.get(normalizedName) || leggerMap.get(cls.name.toUpperCase())
+
+      if (existingForClass.length === 0) {
+        if (tpl && tpl.students && tpl.students.length > 0) {
+          for (const s of tpl.students) {
+            let cleanNis = s.nis || `${cls.name.replace(/[^a-zA-Z0-9]/g, '')}-${s.no}`
+            if (usedNisSet.has(cleanNis)) {
+              cleanNis = `${cleanNis}_${cls.id.slice(-4)}`
+            }
+            usedNisSet.add(cleanNis)
+
+            newStudentsToCreate.push({
+              id: `std_${cleanNis.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${cls.id}`,
+              nis: cleanNis,
+              nisn: s.nisn,
+              name: s.name,
+              gender: s.gender || 'L',
+              birthPlace: s.birthPlace,
+              birthDate: s.birthDate,
+              parentPhone: s.parentPhone,
+              address: s.address,
+              classId: cls.id,
+              status: 'ACTIVE',
+              createdAt: now,
+              updatedAt: now
+            })
+          }
+        }
+      } else if (tpl && tpl.students && tpl.students.length > 0) {
+        for (let i = 0; i < existingForClass.length; i++) {
+          const st = existingForClass[i]
+          const matchingTplStudent = tpl.students.find((s) => s.nis === st.nis || s.no === i + 1)
+          if (matchingTplStudent && matchingTplStudent.name !== st.name) {
+            studentsToUpdate.push({
+              ...st,
+              name: matchingTplStudent.name,
+              nisn: matchingTplStudent.nisn || st.nisn,
+              gender: matchingTplStudent.gender || st.gender,
+              birthPlace: matchingTplStudent.birthPlace || st.birthPlace,
+              birthDate: matchingTplStudent.birthDate || st.birthDate,
+              parentPhone: matchingTplStudent.parentPhone || st.parentPhone,
+              address: matchingTplStudent.address || st.address,
+              updatedAt: now
+            })
+          }
+        }
+      }
+    }
+
+    const localStudentRepo = new IndexedDbStudentRepository()
+    if (newStudentsToCreate.length > 0) {
+      await localStudentRepo.createBatch(newStudentsToCreate)
+    }
+    if (studentsToUpdate.length > 0) {
+      for (const st of studentsToUpdate) {
+        await localStudentRepo.update(st.id, st)
+      }
+    }
+
+    return newStudentsToCreate.length + studentsToUpdate.length
+  } catch (err) {
+    console.error('[seedData] Failed in ensureAllClassStudentsExist:', err)
+    return 0
+  }
+}
+
 export async function seedDatabase(force = false): Promise<{ success: boolean; message: string }> {
   try {
     const existingIdentity = await repositories.schoolIdentity.getIdentity()
@@ -258,7 +406,16 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
         }
       }
 
-      return { success: true, message: 'Database already initialized with seed data.' }
+      // Ensure all classes have students (auto-repair for existing DBs)
+      const repairedCount = await ensureAllClassStudentsExist()
+
+      return {
+        success: true,
+        message:
+          repairedCount > 0
+            ? `Database synced: added ${repairedCount} missing student records across classes.`
+            : 'Database already initialized with seed data.'
+      }
     }
 
     if (force) {
@@ -1155,15 +1312,32 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
     ]
 
     // Extract unique teachers
+    let tchIdx = 0
     const teacherMap = new Map<string, TeacherEntity>()
     rawTeacherData.forEach((row) => {
       const cleanName = row.name.replace(/\.\d+$/, '').trim()
       const teacherKey = cleanName.toLowerCase().replace(/[^a-z0-9]/g, '_')
       if (!teacherMap.has(teacherKey)) {
+        tchIdx++
         const id = `tch_${teacherKey}`
+        const nip = `198${(tchIdx % 20) + 70}0${(tchIdx % 9) + 1}${(tchIdx % 28) + 1} 200801 ${(tchIdx % 2) + 1} 00${(tchIdx % 9) + 1}`
+        const phone = `0812-${String(1000 + tchIdx * 17).padStart(4, '0')}-${String(5000 + tchIdx * 23).padStart(4, '0')}`
+        const email = `${cleanName
+          .toLowerCase()
+          .split(' ')[0]
+          .replace(/[^a-z]/g, '')}@smknuungaran.sch.id`
+
         teacherMap.set(teacherKey, {
           id,
           name: cleanName,
+          nip,
+          phone,
+          email,
+          education:
+            cleanName.includes('M.Pd') || cleanName.includes('M.Kom') || cleanName.includes('M.Psi')
+              ? 'S2'
+              : 'S1',
+          address: `Jl. Kaligarang No. ${(tchIdx % 30) + 10}, Ungaran, Kab. Semarang`,
           status: 'ACTIVE',
           createdAt: now,
           updatedAt: now
@@ -1342,36 +1516,210 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
         waliTeacherName: 'Puji Jeli Mahanani, S.Pd.'
       },
       // Kelas XI
-      { name: 'XI-TJKT 1', level: 'XI', majorCode: 'TJKT', rombel: 1 },
-      { name: 'XI-TJKT 2', level: 'XI', majorCode: 'TJKT', rombel: 2 },
-      { name: 'XI-TJKT 3', level: 'XI', majorCode: 'TJKT', rombel: 3 },
-      { name: 'XI-TJKT 4', level: 'XI', majorCode: 'TJKT', rombel: 4 },
-      { name: 'XI-BP 1', level: 'XI', majorCode: 'BP', rombel: 1 },
-      { name: 'XI-BP 2', level: 'XI', majorCode: 'BP', rombel: 2 },
-      { name: 'XI-BP 3', level: 'XI', majorCode: 'BP', rombel: 3 },
-      { name: 'XI-DKV 1', level: 'XI', majorCode: 'DKV', rombel: 1 },
-      { name: 'XI-DKV 2', level: 'XI', majorCode: 'DKV', rombel: 2 },
-      { name: 'XI-DKV 3', level: 'XI', majorCode: 'DKV', rombel: 3 },
-      { name: 'XI-TE 1', level: 'XI', majorCode: 'TE', rombel: 1 },
-      { name: 'XI-TE 2', level: 'XI', majorCode: 'TE', rombel: 2 },
-      { name: 'XI-TO 1', level: 'XI', majorCode: 'TO', rombel: 1 },
-      { name: 'XI-TO 2', level: 'XI', majorCode: 'TO', rombel: 2 },
-      { name: 'XI-TO 3', level: 'XI', majorCode: 'TO', rombel: 3 },
+      {
+        name: 'XI-TJKT-1',
+        level: 'XI',
+        majorCode: 'TJKT',
+        rombel: 1,
+        waliTeacherName: 'Nada Khasnatifani, S.Pd.'
+      },
+      {
+        name: 'XI-TJKT-2',
+        level: 'XI',
+        majorCode: 'TJKT',
+        rombel: 2,
+        waliTeacherName: 'Fatkhan Yusuf Anggulian, S.Pd.'
+      },
+      {
+        name: 'XI-TJKT-3',
+        level: 'XI',
+        majorCode: 'TJKT',
+        rombel: 3,
+        waliTeacherName: 'Mujeri, S.Pd.'
+      },
+      {
+        name: 'XI-TJKT-4',
+        level: 'XI',
+        majorCode: 'TJKT',
+        rombel: 4,
+        waliTeacherName: 'Wahyu Jatiningrum, S.Pd.'
+      },
+      {
+        name: 'XI-BP-1',
+        level: 'XI',
+        majorCode: 'BP',
+        rombel: 1,
+        waliTeacherName: 'Annisa Cikal Achaddani, S.Pd.'
+      },
+      {
+        name: 'XI-BP-2',
+        level: 'XI',
+        majorCode: 'BP',
+        rombel: 2,
+        waliTeacherName: 'Bram Shaikul Hadi, S.Pd.'
+      },
+      {
+        name: 'XI-BP-3',
+        level: 'XI',
+        majorCode: 'BP',
+        rombel: 3,
+        waliTeacherName: 'Wiwin Ariyanti, S.Pd.'
+      },
+      {
+        name: 'XI-DKV-1',
+        level: 'XI',
+        majorCode: 'DKV',
+        rombel: 1,
+        waliTeacherName: 'Panggah Adi Putranto, S.Pd., M.Pd.'
+      },
+      {
+        name: 'XI-DKV-2',
+        level: 'XI',
+        majorCode: 'DKV',
+        rombel: 2,
+        waliTeacherName: 'Umi Marfuatin, S.Pd.I.'
+      },
+      {
+        name: 'XI-DKV-3',
+        level: 'XI',
+        majorCode: 'DKV',
+        rombel: 3,
+        waliTeacherName: 'Sifa Sirojuddin Anjay'
+      },
+      {
+        name: 'XI-TE-1',
+        level: 'XI',
+        majorCode: 'TE',
+        rombel: 1,
+        waliTeacherName: 'Dyan Nuryahya, S.Kom.'
+      },
+      {
+        name: 'XI-TE-2',
+        level: 'XI',
+        majorCode: 'TE',
+        rombel: 2,
+        waliTeacherName: 'Andi Siswadi, S.Kom.'
+      },
+      {
+        name: 'XI-TO-1',
+        level: 'XI',
+        majorCode: 'TO',
+        rombel: 1,
+        waliTeacherName: 'Nisfu Said Khodri, S.Kom.'
+      },
+      {
+        name: 'XI-TO-2',
+        level: 'XI',
+        majorCode: 'TO',
+        rombel: 2,
+        waliTeacherName: 'Sri Maryani, S.Kom.'
+      },
+      {
+        name: 'XI-TO-3',
+        level: 'XI',
+        majorCode: 'TO',
+        rombel: 3,
+        waliTeacherName: 'Amien Sekha, S.Kom.'
+      },
       // Kelas XII
-      { name: 'XII-TJKT 1', level: 'XII', majorCode: 'TJKT', rombel: 1 },
-      { name: 'XII-TJKT 2', level: 'XII', majorCode: 'TJKT', rombel: 2 },
-      { name: 'XII-TJKT 3', level: 'XII', majorCode: 'TJKT', rombel: 3 },
-      { name: 'XII-TJKT 4', level: 'XII', majorCode: 'TJKT', rombel: 4 },
-      { name: 'XII-BP 1', level: 'XII', majorCode: 'BP', rombel: 1 },
-      { name: 'XII-BP 2', level: 'XII', majorCode: 'BP', rombel: 2 },
-      { name: 'XII-BP 3', level: 'XII', majorCode: 'BP', rombel: 3 },
-      { name: 'XII-DKV 1', level: 'XII', majorCode: 'DKV', rombel: 1 },
-      { name: 'XII-DKV 2', level: 'XII', majorCode: 'DKV', rombel: 2 },
-      { name: 'XII-DKV 3', level: 'XII', majorCode: 'DKV', rombel: 3 },
-      { name: 'XII-TE 1', level: 'XII', majorCode: 'TE', rombel: 1 },
-      { name: 'XII-TE 2', level: 'XII', majorCode: 'TE', rombel: 2 },
-      { name: 'XII-TO 1', level: 'XII', majorCode: 'TO', rombel: 1 },
-      { name: 'XII-TO 2', level: 'XII', majorCode: 'TO', rombel: 2 }
+      {
+        name: 'XII-TJKT-1',
+        level: 'XII',
+        majorCode: 'TJKT',
+        rombel: 1,
+        waliTeacherName: 'Febri Arianto, S.Kom.'
+      },
+      {
+        name: 'XII-TJKT-2',
+        level: 'XII',
+        majorCode: 'TJKT',
+        rombel: 2,
+        waliTeacherName: 'Muchamad Syarifuddin MR, A.Md.Kom.'
+      },
+      {
+        name: 'XII-TJKT-3',
+        level: 'XII',
+        majorCode: 'TJKT',
+        rombel: 3,
+        waliTeacherName: 'Hidayat Muhtar, A.Md.Kom.'
+      },
+      {
+        name: 'XII-TJKT-4',
+        level: 'XII',
+        majorCode: 'TJKT',
+        rombel: 4,
+        waliTeacherName: 'Djarot Nugroho, S.Si., M.Kom.'
+      },
+      {
+        name: 'XII-BP-1',
+        level: 'XII',
+        majorCode: 'BP',
+        rombel: 1,
+        waliTeacherName: 'Joko Tri Setiyawan, S.Sn.'
+      },
+      {
+        name: 'XII-BP-2',
+        level: 'XII',
+        majorCode: 'BP',
+        rombel: 2,
+        waliTeacherName: 'Alit Kusno Widodo, S.Kom.'
+      },
+      {
+        name: 'XII-BP-3',
+        level: 'XII',
+        majorCode: 'BP',
+        rombel: 3,
+        waliTeacherName: 'Ahmad Nurman Khoir, S.Kom.'
+      },
+      {
+        name: 'XII-DKV-1',
+        level: 'XII',
+        majorCode: 'DKV',
+        rombel: 1,
+        waliTeacherName: 'Rezky Kurniawan Leksono Adi, M.Kom.'
+      },
+      {
+        name: 'XII-DKV-2',
+        level: 'XII',
+        majorCode: 'DKV',
+        rombel: 2,
+        waliTeacherName: 'Faiz Alfan Hidayat, S.Ds.'
+      },
+      {
+        name: 'XII-DKV-3',
+        level: 'XII',
+        majorCode: 'DKV',
+        rombel: 3,
+        waliTeacherName: 'Dina Saftitah, S.Ds.'
+      },
+      {
+        name: 'XII-TE-1',
+        level: 'XII',
+        majorCode: 'TE',
+        rombel: 1,
+        waliTeacherName: 'Achmad Ali Mahmudi, S.Ds.'
+      },
+      {
+        name: 'XII-TE-2',
+        level: 'XII',
+        majorCode: 'TE',
+        rombel: 2,
+        waliTeacherName: 'Andi Krisna Muhammad Ghalib, S.Tr.Anim.'
+      },
+      {
+        name: 'XII-TO-1',
+        level: 'XII',
+        majorCode: 'TO',
+        rombel: 1,
+        waliTeacherName: 'Achmad Zairin, S.Pd., M.Pd.'
+      },
+      {
+        name: 'XII-TO-2',
+        level: 'XII',
+        majorCode: 'TO',
+        rombel: 2,
+        waliTeacherName: 'Wahyu Aji Nugroho, S.I.Kom., M.Pd.'
+      }
     ]
 
     const classes: ClassEntity[] = classConfigs.map((cfg) => {
@@ -1394,23 +1742,35 @@ export async function seedDatabase(force = false): Promise<{ success: boolean; m
     })
     await repositories.classes.createBatch(classes)
 
-    // 8. Real Verified Students with Exact NIS & Gender from Dokumen 3 & 4 (All 573 Students across Grade X)
+    // 8. Real Verified Students with Exact NIS & Gender across Grades X, XI, and XII
     const classMap = new Map(classes.map((c) => [c.name.toUpperCase().replace(/\s+/g, '-'), c.id]))
     classes.forEach((c) => classMap.set(c.name.toUpperCase(), c.id))
 
+    const ALL_INITIAL_LEGGERS = [
+      ...getStandardLeggerRosterByLevel('X'),
+      ...getStandardLeggerRosterByLevel('XI'),
+      ...getStandardLeggerRosterByLevel('XII')
+    ]
+
     const students: StudentEntity[] = []
-    for (const clsDef of VERIFIED_GRADE_X_LEGGERS) {
+    for (const clsDef of ALL_INITIAL_LEGGERS) {
       const targetClassId =
         classMap.get(clsDef.className.toUpperCase().replace(/\s+/g, '-')) ||
         classMap.get(clsDef.className.toUpperCase()) ||
         classes[0].id
 
       for (const s of clsDef.students) {
+        const cleanNis = s.nis || `STD-${s.no}`
         students.push({
-          id: `std_${s.nis.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
-          nis: s.nis,
+          id: `std_${cleanNis.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${targetClassId}`,
+          nis: cleanNis,
+          nisn: s.nisn,
           name: s.name,
           gender: s.gender,
+          birthPlace: s.birthPlace,
+          birthDate: s.birthDate,
+          parentPhone: s.parentPhone,
+          address: s.address,
           classId: targetClassId,
           status: 'ACTIVE',
           createdAt: now,

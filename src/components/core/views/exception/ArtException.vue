@@ -13,8 +13,10 @@
 </template>
 
 <script setup lang="ts">
+  import { useRouter } from 'vue-router'
   import { useCommon } from '@/hooks/core/useCommon'
   import { useUserStore } from '@/store/modules/user'
+  import { authService } from '@/core/services/auth'
 
   const router = useRouter()
   const userStore = useUserStore()
@@ -40,12 +42,24 @@
   const { homePath } = useCommon()
 
   const backHome = () => {
-    const targetHomePath = homePath.value || '/'
+    const session = authService.getCurrentSession()
+    const role = session?.role || userStore.info?.roles?.[0]
 
-    if (!userStore.isLogin) {
+    let targetHomePath = homePath.value
+
+    if (!targetHomePath || targetHomePath === '/') {
+      if (role === 'GURU') {
+        targetHomePath = '/teacher/dashboard'
+      } else if (role === 'ADMIN') {
+        targetHomePath = '/admin/dashboard'
+      } else {
+        targetHomePath = '/login'
+      }
+    }
+
+    if (!userStore.isLogin && !session) {
       router.push({
-        name: 'Login',
-        query: { redirect: targetHomePath }
+        name: 'Login'
       })
       return
     }

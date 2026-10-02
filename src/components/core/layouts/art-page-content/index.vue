@@ -14,12 +14,37 @@
       </div>
     </div>
 
-    <RouterView v-if="isRefresh" v-slot="{ Component, route }" :style="contentStyle">
+    <div
+      v-if="hasPageError"
+      class="p-8 text-center bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 my-6 mx-4"
+    >
+      <div class="text-amber-500 text-4xl mb-3">⚠️</div>
+      <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-2">
+        Gagal Memuat Tampilan Halaman
+      </h3>
+      <p class="text-sm text-slate-500 dark:text-slate-400 mb-4 max-w-md mx-auto">
+        {{ pageErrorMessage || 'Terjadi kesalahan tidak terduga saat menampilkan komponen ini.' }}
+      </p>
+      <div class="flex items-center justify-center gap-3">
+        <button
+          @click="resetPageError"
+          class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors shadow-sm"
+        >
+          Muat Ulang Halaman Ini
+        </button>
+      </div>
+    </div>
+
+    <RouterView v-else-if="isRefresh" v-slot="{ Component, route }" :style="contentStyle">
       <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in" appear>
         <KeepAlive v-if="route.meta?.keepAlive" :max="60" :exclude="keepAliveExclude">
-          <component class="art-page-view" :is="Component" :key="route.fullPath" />
+          <div :key="route.fullPath" class="w-full h-full">
+            <component class="art-page-view" :is="Component" v-if="Component" />
+          </div>
         </KeepAlive>
-        <component v-else class="art-page-view" :is="Component" :key="route.fullPath" />
+        <div v-else :key="route.fullPath" class="w-full h-full">
+          <component class="art-page-view" :is="Component" v-if="Component" />
+        </div>
       </Transition>
     </RouterView>
 
@@ -33,7 +58,7 @@
   </div>
 </template>
 <script setup lang="ts">
-  import { ref, shallowRef, computed, watch, onMounted, nextTick } from 'vue'
+  import { ref, shallowRef, computed, watch, onMounted, nextTick, onErrorCaptured } from 'vue'
   import type { CSSProperties } from 'vue'
   import { useRoute } from 'vue-router'
   import { storeToRefs } from 'pinia'
@@ -51,6 +76,33 @@
   const isRefresh = shallowRef(true)
   const isOpenRouteInfo = import.meta.env.VITE_OPEN_ROUTE_INFO
   const showTransitionMask = ref(false)
+
+  // 错误边界状态
+  const hasPageError = ref(false)
+  const pageErrorMessage = ref('')
+
+  onErrorCaptured((err: any, _instance, info) => {
+    console.error('[ArtPageContent] Captured component error:', err, info)
+    hasPageError.value = true
+    pageErrorMessage.value =
+      err?.message || 'Terjadi kesalahan tidak terduga saat memuat halaman ini.'
+    return false // Prevent error from bubbling up and causing blank layout
+  })
+
+  const resetPageError = () => {
+    hasPageError.value = false
+    pageErrorMessage.value = ''
+    reload()
+  }
+
+  // Clear page error on route navigation
+  watch(
+    () => route.fullPath,
+    () => {
+      hasPageError.value = false
+      pageErrorMessage.value = ''
+    }
+  )
 
   // 标记是否是首次加载（浏览器刷新）
   const isFirstLoad = ref(true)

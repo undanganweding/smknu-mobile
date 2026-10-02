@@ -78,8 +78,22 @@ export const loadingService = {
    */
   hideLoading(): void {
     if (loadingInstance) {
-      loadingInstance.close()
+      try {
+        loadingInstance.close()
+      } catch (e) {
+        console.warn('[LoadingService] Error closing loading instance:', e)
+      }
       loadingInstance = null
+    }
+    if (typeof document !== 'undefined') {
+      const overlays = document.querySelectorAll('.art-loading-fix, .el-loading-mask.is-fullscreen')
+      overlays.forEach((el) => {
+        try {
+          el.remove()
+        } catch {
+          // ignore cleanup errors
+        }
+      })
     }
   }
 }

@@ -174,149 +174,272 @@
 
     <!-- Top Focus Grid: Next Class Hero & Daily Progress -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Next Class Hero Card (Section 4) -->
+      <!-- Next Class Hero Card (Section 4) / Live Class Monitoring Widget -->
       <div
-        class="lg:col-span-2 bg-gradient-to-br from-slate-900 to-slate-800 text-white rounded-2xl p-6 shadow-sm border border-slate-700 flex flex-col justify-between relative overflow-hidden"
+        class="lg:col-span-2 bg-slate-900 text-white rounded-2xl p-5 md:p-6 shadow-md border border-slate-700/80 flex flex-col justify-between relative overflow-hidden"
       >
-        <div class="absolute -right-8 -bottom-8 opacity-10 pointer-events-none">
-          <i class="ri-graduation-cap-line text-[160px]"></i>
+        <div class="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
+          <i class="ri-dashboard-3-line text-[180px]"></i>
         </div>
 
         <div>
-          <div class="flex items-center justify-between gap-2 mb-4">
-            <div class="flex items-center gap-2">
+          <!-- Widget Top Header -->
+          <div class="flex items-center justify-between gap-2 mb-4 pb-3 border-b border-slate-800">
+            <div class="flex flex-wrap items-center gap-2">
               <span
-                class="px-2.5 py-0.5 text-xs font-semibold rounded-md uppercase tracking-wider font-mono"
+                class="px-2.5 py-1 text-xs font-bold rounded-md uppercase tracking-wider font-mono flex items-center gap-1.5"
                 :class="
                   nextClassData?.timingStatus === 'ONGOING'
-                    ? 'bg-emerald-500 text-white animate-pulse'
+                    ? 'bg-emerald-500 text-white shadow-xs animate-pulse'
                     : nextClassData?.timingStatus === 'STARTING_SOON'
                       ? 'bg-amber-500 text-white'
-                      : 'bg-slate-700 text-slate-300'
+                      : 'bg-slate-800 text-slate-200 border border-slate-700'
                 "
               >
+                <span
+                  class="size-2 rounded-full bg-white animate-ping"
+                  v-if="nextClassData?.timingStatus === 'ONGOING'"
+                ></span>
                 {{
                   nextClassData?.timingStatus === 'ONGOING'
-                    ? 'SEDANG BERLANGSUNG'
+                    ? '🔴 KELAS SAAT INI (SEDANG BERLANGSUNG)'
                     : nextClassData?.timingStatus === 'STARTING_SOON'
-                      ? 'SEGERA DIMULAI'
+                      ? '⏳ SEGERA DIMULAI'
                       : nextClassData
-                        ? 'KELAS BERIKUTNYA'
-                        : 'STATUS MENGAJAR'
+                        ? '🔵 KELAS BERIKUTNYA'
+                        : 'STATUS MENGAJAR HARI INI'
                 }}
               </span>
+
+              <!-- Live Timer Badge -->
               <span
-                v-if="nextClassTimingLabel"
-                class="text-xs text-slate-300 font-mono bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700"
+                v-if="liveClassCountdown"
+                class="text-xs font-mono font-bold px-2.5 py-1 rounded-md border flex items-center gap-1.5"
+                :class="
+                  liveClassCountdown.type === 'ONGOING'
+                    ? 'bg-emerald-950/90 text-emerald-300 border-emerald-700/80'
+                    : 'bg-amber-950/90 text-amber-300 border-amber-700/80'
+                "
               >
-                {{ nextClassTimingLabel }}
+                <i class="ri-timer-line text-sm"></i>
+                {{
+                  liveClassCountdown.type === 'ONGOING'
+                    ? `Sisa Waktu: ${liveClassCountdown.formattedTime}`
+                    : `Dimulai dalam ${liveClassCountdown.formattedTime}`
+                }}
               </span>
             </div>
 
             <button
               type="button"
-              class="text-xs text-slate-400 hover:text-white transition-colors cursor-pointer"
+              class="text-xs font-medium text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer flex items-center gap-1 shrink-0"
               @click="goToSchedule"
             >
-              Semua Jadwal <i class="ri-arrow-right-line"></i>
+              Jadwal Lengkap <i class="ri-arrow-right-line"></i>
             </button>
           </div>
 
-          <!-- If Next Class Available -->
-          <div v-if="nextClassData" class="space-y-3">
-            <div>
-              <div class="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
-                {{ nextClassData.className }} &bull; {{ nextClassData.majorName }}
+          <!-- If Class Available -->
+          <div v-if="nextClassData" class="space-y-4">
+            <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+              <!-- Class Info Details -->
+              <div class="space-y-1.5">
+                <div class="flex items-center gap-2">
+                  <span
+                    class="px-2 py-0.5 text-xs font-bold rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  >
+                    {{ nextClassData.className }}
+                  </span>
+                  <span class="text-xs font-medium text-slate-400">{{
+                    nextClassData.majorName
+                  }}</span>
+                </div>
+                <h2 class="text-2xl font-bold tracking-tight text-white mt-1">
+                  {{ nextClassData.subjectName }}
+                </h2>
+                <div
+                  class="flex flex-wrap items-center gap-2.5 text-xs text-slate-300 pt-1 font-mono"
+                >
+                  <span
+                    class="flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700"
+                  >
+                    <i class="ri-time-line text-emerald-400"></i> {{ nextClassData.timeStart }} –
+                    {{ nextClassData.timeEnd }} WIB
+                  </span>
+                  <span
+                    class="flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700"
+                  >
+                    <i class="ri-map-pin-2-line text-emerald-400"></i> {{ nextClassData.roomName }}
+                  </span>
+                  <span
+                    class="flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700"
+                  >
+                    <i class="ri-bookmark-line text-emerald-400"></i> Jam
+                    {{ nextClassData.periodStart }}-{{ nextClassData.periodEnd }} ({{
+                      nextClassData.totalPeriods
+                    }}
+                    JP)
+                  </span>
+                </div>
               </div>
-              <h2 class="text-xl md:text-2xl font-bold tracking-tight text-white mt-0.5">
-                {{ nextClassData.subjectName }}
-              </h2>
+
+              <!-- Dedicated Live Timer Box -->
+              <div
+                v-if="liveClassCountdown"
+                class="bg-slate-800/90 border border-slate-700/80 rounded-xl p-3.5 min-w-[210px] flex flex-col justify-center items-center text-center shadow-inner"
+              >
+                <template v-if="liveClassCountdown.type === 'ONGOING'">
+                  <div
+                    class="text-[10px] uppercase font-bold tracking-wider text-emerald-400 mb-1 flex items-center gap-1"
+                  >
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    Berjalan / Durasi
+                  </div>
+                  <div class="text-2xl font-mono font-extrabold text-white tracking-tight">
+                    {{ liveClassCountdown.formattedElapsed }}
+                  </div>
+                  <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+                    Sisa
+                    <span class="text-emerald-300 font-bold">{{
+                      liveClassCountdown.formattedTime
+                    }}</span>
+                    ({{ liveClassCountdown.totalDurationMin }}m Total)
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="text-[10px] uppercase font-bold tracking-wider text-amber-400 mb-1">
+                    Hitung Mundur Mulai
+                  </div>
+                  <div class="text-2xl font-mono font-extrabold text-white tracking-tight">
+                    {{ liveClassCountdown.formattedTime }}
+                  </div>
+                  <div class="text-[11px] text-slate-400 font-mono mt-0.5">
+                    Mulai Jam {{ nextClassData.timeStart }} WIB
+                  </div>
+                </template>
+              </div>
             </div>
 
-            <div class="flex flex-wrap items-center gap-3 text-xs text-slate-300">
-              <div
-                class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700"
-              >
-                <i class="ri-time-line text-emerald-400"></i>
-                <span class="font-mono font-medium"
-                  >{{ nextClassData.timeStart }} – {{ nextClassData.timeEnd }} WIB</span
+            <!-- Live Class Progress Bar -->
+            <div
+              v-if="liveClassCountdown && liveClassCountdown.type === 'ONGOING'"
+              class="space-y-1.5 pt-1"
+            >
+              <div class="flex justify-between text-xs text-slate-300 font-mono">
+                <span>Progres Jam Pembelajaran</span>
+                <span class="font-bold text-emerald-400"
+                  >{{ liveClassCountdown.percent }}% Selesai</span
                 >
               </div>
               <div
-                class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700"
+                class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden border border-slate-700"
               >
-                <i class="ri-map-pin-2-line text-emerald-400"></i>
-                <span>{{ nextClassData.roomName }}</span>
-              </div>
-              <div
-                class="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700"
-              >
-                <i class="ri-calendar-check-line text-emerald-400"></i>
-                <span
-                  >Jam ke-{{ nextClassData.periodStart }} s.d {{ nextClassData.periodEnd }} ({{
-                    nextClassData.totalPeriods
-                  }}
-                  JP)</span
-                >
+                <div
+                  class="bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 h-full transition-all duration-1000 ease-linear rounded-full shadow-xs"
+                  :style="{ width: liveClassCountdown.percent + '%' }"
+                ></div>
               </div>
             </div>
           </div>
 
-          <!-- If No Next Class -->
+          <!-- If No Class Available -->
           <div v-else class="py-6 space-y-2">
-            <div class="text-slate-300 font-semibold text-base">
-              Tidak ada jadwal mengajar berikutnya hari ini.
+            <div class="text-emerald-400 font-bold text-base flex items-center gap-2">
+              <i class="ri-checkbox-circle-line text-xl"></i> Seluruh Sesi Mengajar Hari Ini Telah
+              Selesai
             </div>
             <p class="text-xs text-slate-400 max-w-md">
-              Seluruh sesi tatap muka hari ini telah selesai atau Anda tidak memiliki alokasi jam
-              mengajar hari ini ({{ todayDayName }}).
+              Tidak ada kelas aktif saat ini. Seluruh jam tatap muka hari ini telah rampung ({{
+                todayDayName
+              }}).
             </p>
           </div>
         </div>
 
-        <!-- Next Class Quick Action Footer -->
-        <div
-          v-if="nextClassData"
-          class="pt-5 mt-4 border-t border-slate-800 flex items-center justify-between gap-3"
-        >
-          <div class="flex items-center gap-2">
-            <span
-              class="px-2 py-0.5 text-[11px] font-medium rounded-full"
-              :class="
-                nextClassData.attendanceDone
-                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                  : 'bg-slate-800 text-slate-300'
-              "
-            >
-              Presensi: {{ nextClassData.attendanceDone ? 'Sudah Diisi' : 'Belum Diisi' }}
-            </span>
-            <span
-              class="px-2 py-0.5 text-[11px] font-medium rounded-full"
-              :class="
-                nextClassData.journalDone
-                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800'
-                  : 'bg-slate-800 text-slate-300'
-              "
-            >
-              Jurnal: {{ nextClassData.journalDone ? 'Sudah Diisi' : 'Belum Diisi' }}
-            </span>
+        <!-- Next Class Quick Action Footer & Following Class Preview -->
+        <div v-if="nextClassData" class="pt-4 mt-4 border-t border-slate-800/80 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <span
+                class="px-2.5 py-1 text-[11px] font-semibold rounded-md border flex items-center gap-1.5"
+                :class="
+                  nextClassData.attendanceDone
+                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                    : 'bg-amber-950/80 text-amber-300 border-amber-800'
+                "
+              >
+                <i
+                  :class="
+                    nextClassData.attendanceDone
+                      ? 'ri-checkbox-circle-line text-emerald-400'
+                      : 'ri-time-line text-amber-400'
+                  "
+                ></i>
+                Presensi: {{ nextClassData.attendanceDone ? 'Sudah Diisi' : 'Belum Diisi' }}
+              </span>
+              <span
+                class="px-2.5 py-1 text-[11px] font-semibold rounded-md border flex items-center gap-1.5"
+                :class="
+                  nextClassData.journalDone
+                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800'
+                    : 'bg-amber-950/80 text-amber-300 border-amber-800'
+                "
+              >
+                <i
+                  :class="
+                    nextClassData.journalDone
+                      ? 'ri-checkbox-circle-line text-emerald-400'
+                      : 'ri-time-line text-amber-400'
+                  "
+                ></i>
+                Jurnal: {{ nextClassData.journalDone ? 'Sudah Diisi' : 'Belum Diisi' }}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                class="px-4 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 rounded-lg transition-all cursor-pointer shadow-xs flex items-center gap-1.5"
+                @click="goToAttendance(nextClassData.id)"
+              >
+                <i class="ri-user-follow-line"></i>
+                {{ nextClassData.attendanceDone ? 'Edit Presensi' : 'Mulai Presensi' }}
+              </button>
+              <button
+                type="button"
+                class="px-3.5 py-2 text-xs font-medium text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 active:bg-slate-900 rounded-lg transition-all cursor-pointer border border-slate-700 flex items-center gap-1.5"
+                @click="goToJournal(nextClassData.id)"
+              >
+                <i class="ri-book-read-line"></i>
+                {{ nextClassData.journalDone ? 'Edit Jurnal' : 'Buka Jurnal' }}
+              </button>
+            </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <button
-              type="button"
-              class="px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-all cursor-pointer shadow-xs"
-              @click="goToAttendance(nextClassData.id)"
-            >
-              <i class="ri-user-follow-line mr-1"></i> Buka Presensi
-            </button>
-            <button
-              type="button"
-              class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-all cursor-pointer border border-slate-700"
-              @click="goToJournal(nextClassData.id)"
-            >
-              <i class="ri-book-read-line mr-1"></i> Buka Jurnal
-            </button>
+          <!-- Subsequent Class Shortcut Banner (Jam Selanjutnya) -->
+          <div
+            v-if="followingClassData"
+            class="px-3.5 py-2.5 bg-slate-800/70 rounded-xl border border-slate-700/70 text-xs text-slate-300 flex items-center justify-between gap-3"
+          >
+            <div class="flex items-center gap-2 truncate">
+              <span
+                class="px-2 py-0.5 text-[10px] font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-800/80 rounded shrink-0"
+              >
+                JAM SELANJUTNYA
+              </span>
+              <span class="font-bold text-white truncate">{{
+                followingClassData.subjectName
+              }}</span>
+              <span class="text-slate-400 font-mono"
+                >&bull; {{ followingClassData.className }}</span
+              >
+              <span class="text-slate-400 hidden sm:inline font-mono"
+                >&bull; {{ followingClassData.roomName }}</span
+              >
+            </div>
+            <div class="font-mono text-emerald-400 font-bold shrink-0 flex items-center gap-1">
+              <i class="ri-calendar-event-line"></i> Pukul {{ followingClassData.timeStart }} WIB
+            </div>
           </div>
         </div>
       </div>
@@ -869,6 +992,10 @@
   const schoolAgendas = ref<SchoolAgendaEntity[]>([])
   const announcements = ref<AnnouncementEntity[]>([])
 
+  // Ticking real-time clock & live countdown
+  const currentTime = ref(new Date())
+  let liveTickerTimer: any = null
+
   // Schedule Alerts & Notifications
   const activeAlert = ref<ScheduleAlert | null>(null)
   const notificationModalVisible = ref(false)
@@ -919,12 +1046,12 @@
   })
 
   /**
-   * Determine Next Class dynamically based on current time + today's structured schedule (Section 4)
+   * Determine Next Class dynamically based on current time + today's structured schedule
    */
   const nextClassData = computed(() => {
     if (todayScheduleItems.value.length === 0) return null
 
-    const now = new Date()
+    const now = currentTime.value
     const curMin = now.getHours() * 60 + now.getMinutes()
 
     // 1. Check if any class is currently ongoing
@@ -961,26 +1088,87 @@
     return null
   })
 
-  const nextClassTimingLabel = computed(() => {
-    if (!nextClassData.value) return ''
-    const now = new Date()
-    const curMin = now.getHours() * 60 + now.getMinutes()
+  /**
+   * Precise second-by-second live countdown, elapsed timer and progress bar
+   */
+  const liveClassCountdown = computed(() => {
+    if (!nextClassData.value) return null
+    const now = currentTime.value
+    const curSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+
     const startMin = teacherScheduleNotificationService.parseTimeToMinutes(
       nextClassData.value.timeStart
     )
     const endMin = teacherScheduleNotificationService.parseTimeToMinutes(
       nextClassData.value.timeEnd
     )
+    const startSec = startMin * 60
+    const endSec = endMin * 60
 
-    if (curMin >= startMin && curMin < endMin) {
-      const remaining = endMin - curMin
-      return `Sisa ${remaining} menit`
+    const formatSec = (seconds: number) => {
+      const h = Math.floor(seconds / 3600)
+      const m = Math.floor((seconds % 3600) / 60)
+      const s = Math.floor(seconds % 60)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
     }
-    if (startMin > curMin) {
-      const wait = startMin - curMin
-      return `${wait} menit lagi`
+
+    if (curSec >= startSec && curSec < endSec) {
+      const totalSec = endSec - startSec
+      const elapsedSec = curSec - startSec
+      const remainingSec = endSec - curSec
+
+      const formattedTime = formatSec(remainingSec)
+      const formattedElapsed = formatSec(elapsedSec)
+      const totalDurationMin = Math.round(totalSec / 60)
+      const percent = Math.min(100, Math.max(0, Math.round((elapsedSec / totalSec) * 100)))
+
+      return {
+        type: 'ONGOING' as const,
+        remainingSec,
+        elapsedSec,
+        formattedTime,
+        formattedElapsed,
+        totalDurationMin,
+        percent,
+        label: `Sisa ${formattedTime}`
+      }
+    } else if (startSec > curSec) {
+      const waitSec = startSec - curSec
+      const formattedTime = formatSec(waitSec)
+
+      return {
+        type: 'UPCOMING' as const,
+        waitSec,
+        formattedTime,
+        percent: 0,
+        label: `Mulai ${formattedTime}`
+      }
     }
-    return ''
+
+    return null
+  })
+
+  /**
+   * Subsequent class coming up later today
+   */
+  const followingClassData = computed(() => {
+    if (!nextClassData.value || todayScheduleItems.value.length === 0) return null
+    const currentId = nextClassData.value.id
+    const curStartMin = teacherScheduleNotificationService.parseTimeToMinutes(
+      nextClassData.value.timeStart
+    )
+
+    const remaining = todayScheduleItems.value
+      .filter((item) => item.id !== currentId)
+      .map((item) => ({
+        item,
+        startMin: teacherScheduleNotificationService.parseTimeToMinutes(item.timeStart)
+      }))
+      .filter((x) => x.startMin >= curStartMin)
+      .sort((a, b) => a.startMin - b.startMin)
+
+    return remaining.length > 0 ? remaining[0].item : null
   })
 
   /**
@@ -1219,9 +1407,14 @@
     }
     if (alertUnsubscribe) alertUnsubscribe()
     if (scheduleTimerInterval) clearInterval(scheduleTimerInterval)
+    if (liveTickerTimer) clearInterval(liveTickerTimer)
   })
 
   onMounted(async () => {
+    // Start second-by-second live clock ticker
+    liveTickerTimer = setInterval(() => {
+      currentTime.value = new Date()
+    }, 1000)
     if (typeof window !== 'undefined') {
       window.addEventListener('online', updateOnlineStatus)
       window.addEventListener('offline', updateOnlineStatus)

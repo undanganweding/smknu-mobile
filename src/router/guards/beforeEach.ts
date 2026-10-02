@@ -129,6 +129,8 @@ function closeLoading(): void {
   pendingLoading = false
 }
 
+let routeInitPromise: Promise<void> | null = null
+
 /**
  * 处理路由守卫逻辑
  */
@@ -162,14 +164,24 @@ async function handleRouteGuard(
 
   // 3. 处理动态路由注册
   const session = authService.getCurrentSession()
-  if (!routeRegistry?.isRegistered() && (userStore.isLogin || !!session)) {
-    // 防止并发请求（快速连续导航场景）
-    if (routeInitInProgress) {
-      // 正在初始化中，等待完成后重新导航
-      next(false)
+  const currentRole = session?.role || userStore.info?.roles?.[0]
+  if (!routeRegistry?.isRegisteredForRole(currentRole) && (userStore.isLogin || !!session)) {
+    if (routeInitInProgress && routeInitPromise) {
+      await routeInitPromise
+      closeLoading()
+      if (to.matched.length > 0) {
+        setWorktab(to)
+        setPageTitle(to)
+        next()
+        return
+      }
+      next({ path: to.fullPath, replace: true })
       return
     }
-    await handleDynamicRoutes(to, next, router)
+
+    routeInitPromise = handleDynamicRoutes(to, next, router)
+    await routeInitPromise
+    routeInitPromise = null
     return
   }
 
@@ -240,21 +252,29 @@ function handleLoginStatus(
     const role = session?.role || userStore.info?.roles?.[0]
     if (role !== 'GURU') {
       console.warn(`[RBAC] Access denied to guru alias '${to.path}' for role '${role}'.`)
-      next({ name: 'Exception403', replace: true })
+      if (role === 'ADMIN') {
+        next({ path: '/admin/dashboard', replace: true })
+      } else {
+        next({ name: 'Exception403', replace: true })
+      }
       return false
     }
     next({ path: canonicalTeacherPath, query: to.query, hash: to.hash, replace: true })
     return false
   }
 
-  // 4. 严格 RBAC 规则校验（即使直接在地址栏手动输入 URL 也必须拦截）
+  // 4. 严格 RBAC 规则校验（即使直接在地址栏手动输入 URL 也必须拦截并优雅重定向）
   const role = session?.role || userStore.info?.roles?.[0]
 
   // /admin/* -> Hanya ADMIN
   if (to.path.startsWith('/admin')) {
     if (role !== 'ADMIN') {
       console.warn(`[RBAC] Access denied to admin route '${to.path}' for role '${role}'.`)
-      next({ name: 'Exception403', replace: true })
+      if (role === 'GURU') {
+        next({ path: '/teacher/dashboard', replace: true })
+      } else {
+        next({ name: 'Exception403', replace: true })
+      }
       return false
     }
   }
@@ -263,7 +283,11 @@ function handleLoginStatus(
   if (to.path.startsWith('/teacher')) {
     if (role !== 'GURU') {
       console.warn(`[RBAC] Access denied to teacher route '${to.path}' for role '${role}'.`)
-      next({ name: 'Exception403', replace: true })
+      if (role === 'ADMIN') {
+        next({ path: '/admin/dashboard', replace: true })
+      } else {
+        next({ name: 'Exception403', replace: true })
+      }
       return false
     }
   }
@@ -329,7 +353,10 @@ async function handleDynamicRoutes(
     }
 
     // 4. 注册动态路由
-    routeRegistry?.register(menuList)
+    const userStore = useUserStore()
+    const session = authService.getCurrentSession()
+    const currentRole = session?.role || userStore.info?.roles?.[0]
+    routeRegistry?.register(menuList, currentRole)
 
     // 5. 保存菜单数据到 store
     const menuStore = useMenuStore()
@@ -432,6 +459,7 @@ async function fetchUserInfo(): Promise<void> {
   const userStore = useUserStore()
   const data = await fetchGetUserInfo()
   userStore.setUserInfo(data)
+  userStore.setLoginStatus(true)
   // 检查并清理工作台标签页（如果是不同用户登录）
   userStore.checkAndClearWorktabs()
 }
@@ -439,8 +467,8 @@ async function fetchUserInfo(): Promise<void> {
 /**
  * 重置路由相关状态
  */
-export function resetRouterState(delay: number): void {
-  setTimeout(() => {
+export function resetRouterState(delay = 0): void {
+  const doReset = () => {
     routeRegistry?.unregister()
     IframeRouteManager.getInstance().clear()
 
@@ -448,9 +476,19 @@ export function resetRouterState(delay: number): void {
     menuStore.removeAllDynamicRoutes()
     menuStore.setMenuList([])
 
+    const worktabStore = useWorktabStore()
+    worktabStore.opened = []
+    worktabStore.keepAliveExclude = []
+
     // 重置路由初始化状态，允许重新登录后再次初始化
     resetRouteInitState()
-  }, delay)
+  }
+
+  if (delay > 0) {
+    setTimeout(doReset, delay)
+  } else {
+    doReset()
+  }
 }
 
 /**
@@ -472,12 +510,12 @@ function handleRootPathRedirect(to: RouteLocationNormalized, next: NavigationGua
   }
 
   const { homePath } = useCommon()
-  if (homePath.value && homePath.value !== '/') {
+  if (homePath.value && homePath.value !== '/' && homePath.value !== RoutesAlias.Login) {
     next({ path: homePath.value, replace: true })
     return true
   }
 
-  next({ path: '/admin/dashboard', replace: true })
+  next({ name: 'Login', replace: true })
   return true
 }
 

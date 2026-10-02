@@ -23,7 +23,86 @@ export class PendingMutationQueue {
   }
 
   /**
-   * Enqueue a new mutation to be synced to Supabase
+   * Enqueue a batch of mutations in a SINGLE transaction for ultra-fast bulk operations
+   */
+  public async enqueueBatch(
+    items: Array<{
+      entity: string
+      entityId: string
+      operation: MutationOperation
+      payload: any
+    }>
+  ): Promise<PendingMutationEntity[]> {
+    if (items.length === 0) return []
+    const db = await indexedDb.getDatabase()
+    const now = new Date().toISOString()
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('pending_mutations', 'readwrite')
+      const store = tx.objectStore('pending_mutations')
+      const getAllReq = store.getAll()
+
+      getAllReq.onsuccess = () => {
+        const all: PendingMutationEntity[] = getAllReq.result || []
+        const existingMap = new Map<string, PendingMutationEntity>()
+
+        all.forEach((m) => {
+          if (m.status === 'PENDING' || m.status === 'FAILED') {
+            const key = `${m.entity.toLowerCase()}:${m.entityId}`
+            existingMap.set(key, m)
+          }
+        })
+
+        const results: PendingMutationEntity[] = []
+
+        for (const item of items) {
+          const key = `${item.entity.toLowerCase()}:${item.entityId}`
+          const existing = existingMap.get(key)
+
+          if (existing) {
+            if (item.operation === 'DELETE' && existing.operation === 'CREATE') {
+              store.delete(existing.id)
+              existingMap.delete(key)
+              continue
+            }
+
+            existing.payload = item.payload
+            existing.updatedAt = now
+            existing.status = 'PENDING'
+            existing.retryCount = 0
+            if (item.operation === 'DELETE') {
+              existing.operation = 'DELETE'
+            }
+            store.put(existing)
+            results.push(existing)
+          } else {
+            const mutation: PendingMutationEntity = {
+              id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${Math.random().toString(36).substring(2, 5)}`,
+              entity: item.entity,
+              entityId: item.entityId,
+              operation: item.operation,
+              payload: item.payload,
+              retryCount: 0,
+              status: 'PENDING',
+              createdAt: now,
+              updatedAt: now
+            }
+            store.put(mutation)
+            existingMap.set(key, mutation)
+            results.push(mutation)
+          }
+        }
+
+        tx.oncomplete = () => resolve(results)
+        tx.onerror = () => reject(tx.error)
+      }
+
+      getAllReq.onerror = () => reject(getAllReq.error)
+    })
+  }
+
+  /**
+   * Enqueue a new mutation to be synced to Supabase (with automatic consolidation)
    */
   public async enqueue(
     entity: string,
@@ -31,35 +110,66 @@ export class PendingMutationQueue {
     operation: MutationOperation,
     payload: any
   ): Promise<PendingMutationEntity> {
-    const db = await indexedDb.getDatabase()
-    const now = new Date().toISOString()
+    const batchRes = await this.enqueueBatch([{ entity, entityId, operation, payload }])
+    return (
+      batchRes[0] || {
+        id: `mut_${Date.now()}`,
+        entity,
+        entityId,
+        operation,
+        payload,
+        retryCount: 0,
+        status: 'PENDING',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    )
+  }
 
-    const mutation: PendingMutationEntity = {
-      id: `mut_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      entity,
-      entityId,
-      operation,
-      payload,
-      retryCount: 0,
-      status: 'PENDING',
-      createdAt: now,
-      updatedAt: now
+  /**
+   * Automatically prune mutations that violate RLS or are invalid system seed duplicates
+   */
+  public async pruneRlsAndStaleMutations(): Promise<number> {
+    try {
+      const db = await indexedDb.getDatabase()
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('pending_mutations', 'readwrite')
+        const store = tx.objectStore('pending_mutations')
+        const getAllReq = store.getAll()
+
+        getAllReq.onsuccess = () => {
+          const all: PendingMutationEntity[] = getAllReq.result || []
+          let removed = 0
+          for (const m of all) {
+            const errMsg = (m.error || '').toLowerCase()
+            const isRls =
+              errMsg.includes('row-level security') ||
+              errMsg.includes('rls') ||
+              errMsg.includes('42501') ||
+              errMsg.includes('permission denied')
+            const isAutoStudentSeed =
+              m.entity?.toLowerCase() === 'student' &&
+              typeof m.entityId === 'string' &&
+              m.entityId.startsWith('std_')
+            if (isRls || isAutoStudentSeed) {
+              store.delete(m.id)
+              removed++
+            }
+          }
+          resolve(removed)
+        }
+        getAllReq.onerror = () => reject(getAllReq.error)
+      })
+    } catch {
+      return 0
     }
-
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction('pending_mutations', 'readwrite')
-      const store = tx.objectStore('pending_mutations')
-      const req = store.put(mutation)
-
-      req.onsuccess = () => resolve(mutation)
-      req.onerror = () => reject(req.error)
-    })
   }
 
   /**
    * Get all mutations currently waiting to be synced (ordered by createdAt FIFO)
    */
   public async getPending(): Promise<PendingMutationEntity[]> {
+    await this.pruneRlsAndStaleMutations()
     const db = await indexedDb.getDatabase()
     return new Promise((resolve, reject) => {
       const tx = db.transaction('pending_mutations', 'readonly')
@@ -68,9 +178,15 @@ export class PendingMutationQueue {
 
       req.onsuccess = () => {
         const all: PendingMutationEntity[] = req.result || []
-        // Filter pending or failed, sorted chronologically
+        // Filter pending or failed with reasonable retry count (< 5)
         const filtered = all
-          .filter((m) => m.status === 'PENDING' || m.status === 'FAILED')
+          .filter(
+            (m) =>
+              (m.status === 'PENDING' || m.status === 'FAILED') &&
+              (m.retryCount || 0) < 5 &&
+              !m.error?.toLowerCase().includes('row-level security') &&
+              !m.error?.toLowerCase().includes('rls')
+          )
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
         resolve(filtered)
       }

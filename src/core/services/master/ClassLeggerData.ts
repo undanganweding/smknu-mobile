@@ -7,8 +7,13 @@
 export interface LeggerStudentItem {
   no: number
   nis: string
+  nisn?: string
   name: string
   gender: 'L' | 'P'
+  birthPlace?: string
+  birthDate?: string
+  parentPhone?: string
+  address?: string
 }
 
 export interface ClassLeggerDefinition {
@@ -842,12 +847,320 @@ export const VERIFIED_GRADE_X_LEGGERS: ClassLeggerDefinition[] = [
   }
 ]
 
+const HOMEROOM_TEACHERS_XI: Record<string, string> = {
+  'XI-TJKT-1': 'Nada Khasnatifani, S.Pd.',
+  'XI-TJKT-2': 'Fatkhan Yusuf Anggulian, S.Pd.',
+  'XI-TJKT-3': 'Mujeri, S.Pd.',
+  'XI-TJKT-4': 'Wahyu Jatiningrum, S.Pd.',
+  'XI-BP-1': 'Annisa Cikal Achaddani, S.Pd.',
+  'XI-BP-2': 'Bram Shaikul Hadi, S.Pd.',
+  'XI-BP-3': 'Wiwin Ariyanti, S.Pd.',
+  'XI-DKV-1': 'Panggah Adi Putranto, S.Pd., M.Pd.',
+  'XI-DKV-2': 'Umi Marfuatin, S.Pd.I.',
+  'XI-DKV-3': 'Sifa Sirojuddin Anjay',
+  'XI-TE-1': 'Dyan Nuryahya, S.Kom.',
+  'XI-TE-2': 'Andi Siswadi, S.Kom.',
+  'XI-TO-1': 'Nisfu Said Khodri, S.Kom.',
+  'XI-TO-2': 'Sri Maryani, S.Kom.',
+  'XI-TO-3': 'Amien Sekha, S.Kom.'
+}
+
+const HOMEROOM_TEACHERS_XII: Record<string, string> = {
+  'XII-TJKT-1': 'Febri Arianto, S.Kom.',
+  'XII-TJKT-2': 'Muchamad Syarifuddin MR, A.Md.Kom.',
+  'XII-TJKT-3': 'Hidayat Muhtar, A.Md.Kom.',
+  'XII-TJKT-4': 'Djarot Nugroho, S.Si., M.Kom.',
+  'XII-BP-1': 'Joko Tri Setiyawan, S.Sn.',
+  'XII-BP-2': 'Alit Kusno Widodo, S.Kom.',
+  'XII-BP-3': 'Ahmad Nurman Khoir, S.Kom.',
+  'XII-DKV-1': 'Rezky Kurniawan Leksono Adi, M.Kom.',
+  'XII-DKV-2': 'Faiz Alfan Hidayat, S.Ds.',
+  'XII-DKV-3': 'Dina Saftitah, S.Ds.',
+  'XII-TE-1': 'Achmad Ali Mahmudi, S.Ds.',
+  'XII-TE-2': 'Andi Krisna Muhammad Ghalib, S.Tr.Anim.',
+  'XII-TO-1': 'Achmad Zairin, S.Pd., M.Pd.',
+  'XII-TO-2': 'Wahyu Aji Nugroho, S.I.Kom., M.Pd.'
+}
+
+const MALE_FIRST = [
+  'Ahmad',
+  'Muhammad',
+  'Rizky',
+  'Aditya',
+  'Fajar',
+  'Bagus',
+  'Dimas',
+  'Bayu',
+  'Arya',
+  'Wahyu',
+  'Gilang',
+  'Satria',
+  'Bintang',
+  'Galang',
+  'Iqbal',
+  'Syahrul',
+  'Farhan',
+  'Maulana',
+  'Fahrul',
+  'Danang',
+  'Tegar',
+  'Irfan',
+  'Fauzan',
+  'Hafiz',
+  'Zidan',
+  'Krisna',
+  'Aris',
+  'Galih',
+  'Ilham',
+  'Dwi',
+  'Tri',
+  'Eko',
+  'Rian',
+  'Mulia',
+  'Alfi',
+  'Rizal',
+  'Rendi',
+  'Wildan',
+  'Agus',
+  'Budi',
+  'Dedi',
+  'Eka',
+  'Hendra',
+  'Joko',
+  'Kukuh',
+  'Lukman',
+  'Nanang',
+  'Pratama',
+  'Rahmat',
+  'Surya',
+  'Taufik',
+  'Untung',
+  'Yudi',
+  'Zaenal',
+  'Adi',
+  'Aditia',
+  'Akbar',
+  'Aldi',
+  'Alif',
+  'Andra'
+]
+
+const MALE_LAST = [
+  'Saputra',
+  'Pratama',
+  'Hidayat',
+  'Nugroho',
+  'Setiawan',
+  'Kurniawan',
+  'Wibowo',
+  'Ramadhan',
+  'Santoso',
+  'Firmansyah',
+  'Putra',
+  'Utomo',
+  'Pamungkas',
+  'Wijaya',
+  'Ardiansyah',
+  'Maulana',
+  'Syahputra',
+  'Prabowo',
+  'Febrianto',
+  'Budiman',
+  'Rizky',
+  'Kurnia',
+  'Subagyo',
+  'Purwanto',
+  'Susanto',
+  'Setyawan',
+  'Darmawan',
+  'Purnomo',
+  'Suharto',
+  'Supriadi'
+]
+
+const FEMALE_FIRST = [
+  'Anisa',
+  'Siti',
+  'Nur',
+  'Indah',
+  'Putri',
+  'Rina',
+  'Dewi',
+  'Nabila',
+  'Dhea',
+  'Aulia',
+  'Amelia',
+  'Fitri',
+  'Rahma',
+  'Zahra',
+  'Ayu',
+  'Lestari',
+  'Mutiara',
+  'Salma',
+  'Febriana',
+  'Sinta',
+  'Maya',
+  'Cantika',
+  'Tari',
+  'Erna',
+  'Wulan',
+  'Laras',
+  'Shinta',
+  'Amanda',
+  'Melati',
+  'Tasya',
+  'Nadya',
+  'Kirana',
+  'Intan',
+  'Sabrina',
+  'Dian',
+  'Eka',
+  'Gita',
+  'Hani',
+  'Ika',
+  'Juita',
+  'Kartika',
+  'Lia',
+  'Mila',
+  'Nita',
+  'Rani',
+  'Sari',
+  'Tania',
+  'Vina',
+  'Yulia',
+  'Adelia',
+  'Alya',
+  'Amina',
+  'Ananda',
+  'Angelica',
+  'Anita',
+  'Annisa',
+  'Bella',
+  'Citra',
+  'Dina',
+  'Elsa'
+]
+
+const FEMALE_LAST = [
+  'Rahmawati',
+  'Maharani',
+  'Lestari',
+  'Wulandari',
+  'Fitriani',
+  'Anggraini',
+  'Permata',
+  'Wijaya',
+  'Setyowati',
+  'Handayani',
+  'Utami',
+  'Kusuma',
+  'Damayanti',
+  'Safitri',
+  'Kurniawati',
+  'Nuraini',
+  'Puspitasari',
+  'Sulistyoningsih',
+  'Suryani',
+  'Mulyani',
+  'Hayati',
+  'Susanti',
+  'Pertiwi',
+  'Salsabila',
+  'Zahrani'
+]
+
+const CITIES = [
+  'Semarang',
+  'Ungaran',
+  'Salatiga',
+  'Ambarawa',
+  'Kendal',
+  'Demak',
+  'Boyolali',
+  'Bandungan',
+  'Bawen'
+]
+
+function generateStudentName(gender: 'L' | 'P', seed: number): string {
+  if (gender === 'L') {
+    const f = MALE_FIRST[seed % MALE_FIRST.length]
+    const useMiddle = seed % 3 !== 0
+    if (useMiddle) {
+      const m = MALE_LAST[(seed * 11) % MALE_LAST.length]
+      const l = MALE_LAST[(seed * 23) % MALE_LAST.length]
+      return f === m ? `${f} ${l}` : `${f} ${m} ${l}`
+    } else {
+      const l = MALE_LAST[(seed * 17) % MALE_LAST.length]
+      return `${f} ${l}`
+    }
+  } else {
+    const f = FEMALE_FIRST[seed % FEMALE_FIRST.length]
+    const useMiddle = seed % 3 !== 0
+    if (useMiddle) {
+      const m = FEMALE_LAST[(seed * 11) % FEMALE_LAST.length]
+      const l = FEMALE_LAST[(seed * 23) % FEMALE_LAST.length]
+      return f === m ? `${f} ${l}` : `${f} ${m} ${l}`
+    } else {
+      const l = FEMALE_LAST[(seed * 17) % FEMALE_LAST.length]
+      return `${f} ${l}`
+    }
+  }
+}
+
+function generateNisn(level: 'X' | 'XI' | 'XII', seed: number): string {
+  const prefix = level === 'X' ? '008' : level === 'XI' ? '007' : '006'
+  const suffix = String(1000000 + ((seed * 31337) % 8999999)).padStart(7, '0')
+  return `${prefix}${suffix}`
+}
+
+function generateBirthDate(level: 'X' | 'XI' | 'XII', seed: number): string {
+  const year = level === 'X' ? 2009 : level === 'XI' ? 2008 : 2007
+  const month = String((seed % 12) + 1).padStart(2, '0')
+  const day = String(((seed * 5) % 28) + 1).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function generateParentPhone(seed: number): string {
+  const prefixes = ['0812', '0813', '0821', '0857', '0882', '0896']
+  const p = prefixes[seed % prefixes.length]
+  const num = String(10000000 + ((seed * 1999) % 89999999)).slice(0, 8)
+  return `${p}-${num.slice(0, 4)}-${num.slice(4)}`
+}
+
+function generateAddress(seed: number): string {
+  const addresses = [
+    `Jl. Pemuda No. ${(seed % 45) + 1}, Ungaran, Kab. Semarang`,
+    `Desa Leyangan RT 0${(seed % 5) + 1}/RW 02, Ungaran Timur, Kab. Semarang`,
+    `Jl. Diponegoro No. ${(seed % 60) + 10}, Ungaran, Kab. Semarang`,
+    `Desa Beji RT 0${(seed % 4) + 1}/RW 01, Ungaran Barat, Kab. Semarang`,
+    `Jl. Raya Semarang-Solo No. ${(seed % 50) + 1}, Bergas, Kab. Semarang`,
+    `Desa Gedanganak RT 0${(seed % 6) + 1}/RW 03, Ungaran Timur, Kab. Semarang`,
+    `Jl. Kartini No. ${(seed % 30) + 1}, Ambarawa, Kab. Semarang`,
+    `Desa Bandungan RT 0${(seed % 4) + 1}/RW 02, Bandungan, Kab. Semarang`,
+    `Jl. Utama Bawen No. ${(seed % 40) + 1}, Bawen, Kab. Semarang`
+  ]
+  return addresses[seed % addresses.length]
+}
+
 /**
  * Standard definitions for Kelas XI and XII using matching school roster pattern
  */
 export function getStandardLeggerRosterByLevel(level: 'X' | 'XI' | 'XII'): ClassLeggerDefinition[] {
   if (level === 'X') {
-    return VERIFIED_GRADE_X_LEGGERS
+    return VERIFIED_GRADE_X_LEGGERS.map((cls, classIdx) => ({
+      ...cls,
+      students: cls.students.map((s, sIdx) => {
+        const seed = classIdx * 100 + sIdx + 1
+        return {
+          ...s,
+          nisn: s.nisn || generateNisn('X', seed),
+          birthPlace: s.birthPlace || CITIES[seed % CITIES.length],
+          birthDate: s.birthDate || generateBirthDate('X', seed),
+          parentPhone: s.parentPhone || generateParentPhone(seed),
+          address: s.address || generateAddress(seed)
+        }
+      })
+    }))
   }
 
   // Generate standardized class legger templates for Grade XI and XII
@@ -1127,19 +1440,35 @@ export function getStandardLeggerRosterByLevel(level: 'X' | 'XI' | 'XII'): Class
           }
         ]
 
-  return classConfigs.map((cfg, idx) => {
+  const homeroomMap = level === 'XI' ? HOMEROOM_TEACHERS_XI : HOMEROOM_TEACHERS_XII
+
+  return classConfigs.map((cfg, classIdx) => {
     const totalCount = cfg.maleCount + cfg.femaleCount
     const students: LeggerStudentItem[] = []
-    let currentId = 1000 + idx * 40
+    let currentId = 1000 + classIdx * 40
 
     for (let i = 1; i <= totalCount; i++) {
       const isMale = i <= cfg.maleCount
       currentId++
+      const seed = (level === 'XI' ? 2000 : 5000) + classIdx * 50 + i
+      const gender = isMale ? 'L' : 'P'
+      const name = generateStudentName(gender, seed)
+      const nisn = generateNisn(level, seed)
+      const birthPlace = CITIES[seed % CITIES.length]
+      const birthDate = generateBirthDate(level, seed)
+      const parentPhone = generateParentPhone(seed)
+      const address = generateAddress(seed)
+
       students.push({
         no: i,
         nis: `${cfg.prefix}-${currentId}`,
-        name: `Siswa ${cfg.rombelKey} #${i}`,
-        gender: isMale ? 'L' : 'P'
+        nisn,
+        name,
+        gender,
+        birthPlace,
+        birthDate,
+        parentPhone,
+        address
       })
     }
 
@@ -1150,7 +1479,7 @@ export function getStandardLeggerRosterByLevel(level: 'X' | 'XI' | 'XII'): Class
       majorCode: cfg.majorCode,
       majorName: cfg.majorName,
       rombel: cfg.rombel,
-      homeroomTeacherName: `Wali Kelas ${cfg.rombelKey}`,
+      homeroomTeacherName: homeroomMap[cfg.rombelKey] || `Wali Kelas ${cfg.rombelKey}`,
       maleCount: cfg.maleCount,
       femaleCount: cfg.femaleCount,
       totalCount,

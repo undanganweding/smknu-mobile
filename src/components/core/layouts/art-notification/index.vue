@@ -11,7 +11,10 @@
   >
     <div class="flex-cb px-3.5 mt-3.5">
       <span class="text-base font-medium text-g-800">{{ $t('notice.title') }}</span>
-      <span class="text-xs text-g-800 px-1.5 py-1 c-p select-none rounded hover:bg-g-200">
+      <span
+        class="text-xs text-g-800 px-1.5 py-1 c-p select-none rounded hover:bg-g-200"
+        @click="handleMarkRead"
+      >
         {{ $t('notice.btnRead') }}
       </span>
     </div>
@@ -36,6 +39,7 @@
             v-for="(item, index) in noticeList"
             :key="index"
             class="box-border flex-c px-3.5 py-3.5 c-p last:border-b-0 hover:bg-g-200/60"
+            @click="navigateToAnnouncements"
           >
             <div
               class="size-9 leading-9 text-center rounded-lg flex-cc"
@@ -56,6 +60,7 @@
             v-for="(item, index) in msgList"
             :key="index"
             class="box-border flex-c px-3.5 py-3.5 c-p last:border-b-0 hover:bg-g-200/60"
+            @click="navigateToAnnouncements"
           >
             <div class="w-9 h-9">
               <img :src="item.avatar" class="w-full h-full rounded-lg" />
@@ -72,7 +77,8 @@
           <li
             v-for="(item, index) in pendingList"
             :key="index"
-            class="box-border px-5 py-3.5 last:border-b-0"
+            class="box-border px-5 py-3.5 last:border-b-0 c-p hover:bg-g-200/60"
+            @click="navigateToAnnouncements"
           >
             <h4>{{ item.title }}</h4>
             <p class="text-xs text-g-500">{{ item.time }}</p>
@@ -105,16 +111,20 @@
 <script setup lang="ts">
   import { computed, ref, watch, type Ref, type ComputedRef } from 'vue'
   import { useI18n } from 'vue-i18n'
+  import { useRouter } from 'vue-router'
+  import { ElMessage } from 'element-plus'
+  import { useUserStore } from '@/store/modules/user'
+  import { authService } from '@/core/services/auth'
 
   // 导入头像图片
   import avatar1 from '@/assets/images/avatar/avatar1.webp'
   import avatar2 from '@/assets/images/avatar/avatar2.webp'
   import avatar3 from '@/assets/images/avatar/avatar3.webp'
-  import avatar4 from '@/assets/images/avatar/avatar4.webp'
-  import avatar5 from '@/assets/images/avatar/avatar5.webp'
-  import avatar6 from '@/assets/images/avatar/avatar6.webp'
 
   defineOptions({ name: 'ArtNotification' })
+
+  const router = useRouter()
+  const userStore = useUserStore()
 
   interface NoticeItem {
     /** 标题 */
@@ -175,33 +185,23 @@
     // 通知数据
     const noticeList = ref<NoticeItem[]>([
       {
-        title: '新增国际化',
-        time: '2024-6-13 0:10',
+        title: 'Pengumuman Jadwal Ujian Tengah Semester Ganjil 2026/2027',
+        time: '2026-09-23 07:00',
         type: 'notice'
       },
       {
-        title: '冷月呆呆给你发了一条消息',
-        time: '2024-4-21 8:05',
-        type: 'message'
-      },
-      {
-        title: '小肥猪关注了你',
-        time: '2020-3-17 21:12',
-        type: 'collection'
-      },
-      {
-        title: '新增使用文档',
-        time: '2024-02-14 0:20',
+        title: 'Penetapan Sinkronisasi Otomatis Supabase Cloud SMK NU Ungaran',
+        time: '2026-09-23 07:10',
         type: 'notice'
       },
       {
-        title: '小肥猪给你发了一封邮件',
-        time: '2024-1-20 0:15',
+        title: 'Batas Akhir Penginputan Jurnal Mengajar Bulanan',
+        time: '2026-09-22 15:30',
         type: 'email'
       },
       {
-        title: '菜单mock本地真实数据',
-        time: '2024-1-17 22:06',
+        title: 'Verifikasi Data Presensi Siswa Kelas X RPL 1 Lengkap',
+        time: '2026-09-22 11:15',
         type: 'notice'
       }
     ])
@@ -209,34 +209,19 @@
     // 消息数据
     const msgList = ref<MessageItem[]>([
       {
-        title: '池不胖 关注了你',
-        time: '2021-2-26 23:50',
+        title: 'Waka Kurikulum: Harap segera melakukan submit Rekap Jurnal KBM',
+        time: '2026-09-23 08:00',
         avatar: avatar1
       },
       {
-        title: '唐不苦 关注了你',
-        time: '2021-2-21 8:05',
+        title: 'Admin Sistem: Integrasi Supabase DB berhasil dihubungkan',
+        time: '2026-09-23 07:12',
         avatar: avatar2
       },
       {
-        title: '中小鱼 关注了你',
-        time: '2020-1-17 21:12',
+        title: 'Guru BK: Laporan kedisiplinan siswa telah diperbarui',
+        time: '2026-09-21 14:20',
         avatar: avatar3
-      },
-      {
-        title: '何小荷 关注了你',
-        time: '2021-01-14 0:20',
-        avatar: avatar4
-      },
-      {
-        title: '誶誶淰 关注了你',
-        time: '2020-12-20 0:15',
-        avatar: avatar5
-      },
-      {
-        title: '冷月呆呆 关注了你',
-        time: '2020-12-17 22:06',
-        avatar: avatar6
       }
     ])
 
@@ -372,21 +357,33 @@
     }
   }
 
+  const navigateToAnnouncements = () => {
+    emit('update:value', false)
+    const session = authService.getCurrentSession()
+    const role = session?.role || userStore.info?.roles?.[0]
+    if (role === 'ADMIN') {
+      router.push('/admin/announcements')
+    } else {
+      router.push('/teacher/announcements')
+    }
+  }
+
+  const handleMarkRead = () => {
+    ElMessage.success('Semua pemberitahuan ditandai sudah dibaca')
+  }
+
   // 业务逻辑处理
   const useBusinessLogic = () => {
     const handleNoticeAll = () => {
-      // 处理查看全部通知
-      console.log('查看全部通知')
+      navigateToAnnouncements()
     }
 
     const handleMsgAll = () => {
-      // 处理查看全部消息
-      console.log('查看全部消息')
+      navigateToAnnouncements()
     }
 
     const handlePendingAll = () => {
-      // 处理查看全部待办
-      console.log('查看全部待办')
+      navigateToAnnouncements()
     }
 
     return {

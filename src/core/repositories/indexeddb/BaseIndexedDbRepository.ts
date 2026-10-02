@@ -264,6 +264,43 @@ export class BaseIndexedDbRepository<T extends { id: string }> implements IRepos
     })
   }
 
+  public async updateBatch(updatesList: Array<{ id: string; updates: Partial<T> }>): Promise<T[]> {
+    if (updatesList.length === 0) return []
+    const db = await dbManager.getDatabase()
+    const tx = db.transaction(this.storeName, 'readwrite')
+    const store = tx.objectStore(this.storeName)
+
+    const now = new Date().toISOString()
+    const updatedRecords: T[] = []
+
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => {
+        updatedRecords.forEach((r) => this.memoryCache.set(r.id, r))
+        resolve(updatedRecords)
+      }
+      tx.onerror = () => reject(tx.error)
+      tx.onabort = () =>
+        reject(new Error(`Transaction aborted for batch update in ${this.storeName}`))
+
+      for (const item of updatesList) {
+        const getReq = store.get(item.id)
+        getReq.onsuccess = () => {
+          const current = getReq.result as T | undefined
+          if (current) {
+            const updatedRecord: T = {
+              ...current,
+              ...item.updates,
+              id: item.id,
+              updatedAt: now
+            }
+            store.put(updatedRecord)
+            updatedRecords.push(updatedRecord)
+          }
+        }
+      }
+    })
+  }
+
   public async update(id: string, updates: Partial<T>): Promise<T> {
     const db = await dbManager.getDatabase()
     const tx = db.transaction(this.storeName, 'readwrite')

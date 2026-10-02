@@ -144,7 +144,7 @@
     border: undefined,
     size: undefined,
     emptyHeight: '100%',
-    emptyText: '暂无数据',
+    emptyText: 'Tidak ada data',
     showTableHeader: true
   })
   const instance = getCurrentInstance()

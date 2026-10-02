@@ -28,6 +28,41 @@
     </style>
 
     <script>
+      // Defensive guard for environments where window.fetch has only a getter
+      ;(function () {
+        try {
+          const originalFetch = window.fetch
+          let activeFetch = originalFetch
+          try {
+            Object.defineProperty(window, 'fetch', {
+              get() {
+                return activeFetch
+              },
+              set(fn) {
+                activeFetch = fn
+              },
+              configurable: true,
+              enumerable: true
+            })
+          } catch (e1) {
+            try {
+              if (window.Window && window.Window.prototype) {
+                Object.defineProperty(window.Window.prototype, 'fetch', {
+                  get() {
+                    return activeFetch
+                  },
+                  set(fn) {
+                    activeFetch = fn
+                  },
+                  configurable: true,
+                  enumerable: true
+                })
+              }
+            } catch (e2) {}
+          }
+        } catch (e) {}
+      })()
+
       // Inisialisasi tema sebelum rendering
       ;(function () {
         try {

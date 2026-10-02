@@ -246,10 +246,73 @@ html.dark .el-card {
 // 修改el-tag样式
 .el-tag {
   font-weight: 500;
-  transition: all 0s !important;
+  border-radius: 6px !important;
+  transition: all 0.15s ease !important;
 
   &.el-tag--default {
     height: 26px !important;
+  }
+
+  &--primary {
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+    color: #047857 !important;
+  }
+
+  &--success {
+    background-color: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    color: #15803d !important;
+  }
+
+  &--warning {
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+    color: #b45309 !important;
+  }
+
+  &--danger {
+    background-color: #fef2f2 !important;
+    border-color: #fecaca !important;
+    color: #b91c1c !important;
+  }
+
+  &--info {
+    background-color: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    color: #475569 !important;
+  }
+}
+
+html.dark .el-tag {
+  &--primary {
+    background-color: rgba(5, 150, 105, 0.2) !important;
+    border-color: rgba(5, 150, 105, 0.4) !important;
+    color: #34d399 !important;
+  }
+
+  &--success {
+    background-color: rgba(16, 185, 129, 0.2) !important;
+    border-color: rgba(16, 185, 129, 0.4) !important;
+    color: #6ee7b7 !important;
+  }
+
+  &--warning {
+    background-color: rgba(245, 158, 11, 0.2) !important;
+    border-color: rgba(245, 158, 11, 0.4) !important;
+    color: #fcd34d !important;
+  }
+
+  &--danger {
+    background-color: rgba(220, 38, 38, 0.2) !important;
+    border-color: rgba(220, 38, 38, 0.4) !important;
+    color: #fca5a5 !important;
+  }
+
+  &--info {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+    color: #cbd5e1 !important;
   }
 }
 
@@ -566,27 +629,229 @@ html.dark .el-card {
     transform: scale(0.98);
   }
 
-  &--primary {
-    --el-button-bg-color: #059669 !important;
-    --el-button-border-color: #059669 !important;
-    --el-button-hover-bg-color: #047857 !important;
-    --el-button-hover-border-color: #047857 !important;
-    --el-button-active-bg-color: #065f46 !important;
-    --el-button-active-border-color: #065f46 !important;
+  // Default / Secondary Button
+  &--default:not(.is-plain):not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info) {
+    color: #1e293b !important;
+    background-color: #ffffff !important;
+    border-color: #e2e8f0 !important;
+
+    &:hover:not(.is-disabled) {
+      color: #059669 !important;
+      border-color: #059669 !important;
+      background-color: #f0fdf4 !important;
+    }
   }
 
-  &--success {
-    --el-button-bg-color: #10b981 !important;
-    --el-button-border-color: #10b981 !important;
-    --el-button-hover-bg-color: #059669 !important;
-    --el-button-hover-border-color: #059669 !important;
+  // Solid Primary Button
+  &--primary:not(.is-plain) {
+    color: #ffffff !important;
+    background-color: #059669 !important;
+    border-color: #059669 !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #047857 !important;
+      border-color: #047857 !important;
+    }
+
+    &:active:not(.is-disabled) {
+      background-color: #065f46 !important;
+      border-color: #065f46 !important;
+    }
   }
 
-  &--warning {
-    --el-button-bg-color: #f59e0b !important;
-    --el-button-border-color: #f59e0b !important;
-    --el-button-hover-bg-color: #d97706 !important;
-    --el-button-hover-border-color: #d97706 !important;
+  // Plain Primary Button
+  &--primary.is-plain {
+    color: #047857 !important;
+    background-color: #ecfdf5 !important;
+    border-color: #a7f3d0 !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #059669 !important;
+      border-color: #059669 !important;
+    }
+  }
+
+  // Solid Success Button
+  &--success:not(.is-plain) {
+    color: #ffffff !important;
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #059669 !important;
+      border-color: #059669 !important;
+    }
+  }
+
+  // Plain Success Button
+  &--success.is-plain {
+    color: #047857 !important;
+    background-color: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #10b981 !important;
+      border-color: #10b981 !important;
+    }
+  }
+
+  // Solid Warning Button
+  &--warning:not(.is-plain) {
+    color: #ffffff !important;
+    background-color: #f59e0b !important;
+    border-color: #f59e0b !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #d97706 !important;
+      border-color: #d97706 !important;
+    }
+  }
+
+  // Plain Warning Button
+  &--warning.is-plain {
+    color: #b45309 !important;
+    background-color: #fffbeb !important;
+    border-color: #fde68a !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #f59e0b !important;
+      border-color: #f59e0b !important;
+    }
+  }
+
+  // Solid Danger Button
+  &--danger:not(.is-plain) {
+    color: #ffffff !important;
+    background-color: #ef4444 !important;
+    border-color: #ef4444 !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #dc2626 !important;
+      border-color: #dc2626 !important;
+    }
+  }
+
+  // Plain Danger Button
+  &--danger.is-plain {
+    color: #b91c1c !important;
+    background-color: #fef2f2 !important;
+    border-color: #fecaca !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #ef4444 !important;
+      border-color: #ef4444 !important;
+    }
+  }
+
+  // Solid Info Button
+  &--info:not(.is-plain) {
+    color: #ffffff !important;
+    background-color: #64748b !important;
+    border-color: #64748b !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #475569 !important;
+      border-color: #475569 !important;
+    }
+  }
+
+  // Plain Info Button
+  &--info.is-plain {
+    color: #334155 !important;
+    background-color: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+
+    &:hover:not(.is-disabled) {
+      color: #ffffff !important;
+      background-color: #64748b !important;
+      border-color: #64748b !important;
+    }
+  }
+}
+
+// Dark Mode Button Tweaks
+html.dark {
+  .el-button {
+    &--default:not(.is-plain):not(.el-button--primary):not(.el-button--success):not(.el-button--warning):not(.el-button--danger):not(.el-button--info) {
+      color: #f1f5f9 !important;
+      background-color: #1e293b !important;
+      border-color: #334155 !important;
+
+      &:hover:not(.is-disabled) {
+        color: #34d399 !important;
+        border-color: #059669 !important;
+        background-color: #0f2922 !important;
+      }
+    }
+
+    &--primary.is-plain {
+      color: #34d399 !important;
+      background-color: rgba(5, 150, 105, 0.18) !important;
+      border-color: rgba(5, 150, 105, 0.45) !important;
+
+      &:hover:not(.is-disabled) {
+        color: #ffffff !important;
+        background-color: #059669 !important;
+        border-color: #059669 !important;
+      }
+    }
+
+    &--success.is-plain {
+      color: #6ee7b7 !important;
+      background-color: rgba(16, 185, 129, 0.18) !important;
+      border-color: rgba(16, 185, 129, 0.45) !important;
+
+      &:hover:not(.is-disabled) {
+        color: #ffffff !important;
+        background-color: #10b981 !important;
+        border-color: #10b981 !important;
+      }
+    }
+
+    &--warning.is-plain {
+      color: #fcd34d !important;
+      background-color: rgba(245, 158, 11, 0.18) !important;
+      border-color: rgba(245, 158, 11, 0.45) !important;
+
+      &:hover:not(.is-disabled) {
+        color: #ffffff !important;
+        background-color: #f59e0b !important;
+        border-color: #f59e0b !important;
+      }
+    }
+
+    &--danger.is-plain {
+      color: #fca5a5 !important;
+      background-color: rgba(220, 38, 38, 0.18) !important;
+      border-color: rgba(220, 38, 38, 0.45) !important;
+
+      &:hover:not(.is-disabled) {
+        color: #ffffff !important;
+        background-color: #ef4444 !important;
+        border-color: #ef4444 !important;
+      }
+    }
+
+    &--info.is-plain {
+      color: #cbd5e1 !important;
+      background-color: rgba(255, 255, 255, 0.08) !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+
+      &:hover:not(.is-disabled) {
+        color: #ffffff !important;
+        background-color: #64748b !important;
+        border-color: #64748b !important;
+      }
+    }
   }
 }
 

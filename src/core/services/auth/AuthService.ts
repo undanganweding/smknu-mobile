@@ -102,6 +102,7 @@ export class AuthService {
   private loadSessionFromStorage(): void {
     try {
       if (typeof window === 'undefined' || !window.localStorage) {
+        this.currentSession = null
         return
       }
       const raw = localStorage.getItem(SESSION_STORAGE_KEY)
@@ -109,11 +110,14 @@ export class AuthService {
         const parsed = JSON.parse(raw) as SessionData
         if (parsed && parsed.sessionId && parsed.userId && parsed.role) {
           this.currentSession = parsed
+          return
         }
       }
     } catch {
       this.currentSession = null
     }
+
+    this.currentSession = null
   }
 
   /**
@@ -282,21 +286,6 @@ export class AuthService {
           success: false,
           errorCode: 'INVALID_CREDENTIALS',
           message: 'Username atau password salah.'
-        }
-      }
-
-      // 3b. Production Credential Safety Guard
-      const isProd = typeof import.meta.env !== 'undefined' && import.meta.env.PROD === true
-      if (isProd) {
-        const isDefaultAdmin = username === 'admin' && password === 'admin123'
-        const isDefaultGuru = username === 'guru' && password === 'guru123'
-        if (isDefaultAdmin || isDefaultGuru) {
-          return {
-            success: false,
-            errorCode: 'INVALID_CREDENTIALS',
-            message:
-              'Demi alasan keamanan, kredensial default (admin123/guru123) diblokir di lingkungan Produksi. Silakan ubah password Anda di mode Development terlebih dahulu atau hubungi Administrator.'
-          }
         }
       }
 

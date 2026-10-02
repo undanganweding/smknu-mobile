@@ -64,6 +64,8 @@ export enum MenuWidth {
  * 语言类型
  */
 export enum LanguageEnum {
+  /** Bahasa Indonesia */
+  ID = 'id',
   /** 中文 */
   ZH = 'zh',
   /** 英文 */

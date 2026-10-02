@@ -12,13 +12,29 @@ import AppLayout from '@/views/index/index.vue'
  * 2、静态路由不管是否登录都可以访问
  */
 export const staticRoutes: AppRouteRecordRaw[] = [
-  // 不需要登录就能访问的路由示例
-  // {
-  //   path: '/welcome',
-  //   name: 'WelcomeStatic',
-  //   component: () => import('@views/dashboard/console/index.vue'),
-  //   meta: { title: 'menus.dashboard.title' }
-  // },
+  {
+    path: '/',
+    name: 'Root',
+    redirect: () => {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const raw = localStorage.getItem('guru_offline_session')
+          if (raw) {
+            const parsed = JSON.parse(raw)
+            if (parsed && parsed.role === 'GURU') {
+              return '/teacher/dashboard'
+            }
+            if (parsed && parsed.role === 'ADMIN') {
+              return '/admin/dashboard'
+            }
+          }
+        }
+      } catch (err) {
+        console.debug('[Router] Root redirect session error:', err)
+      }
+      return '/auth/login'
+    }
+  },
   {
     path: '/auth/login',
     name: 'Login',

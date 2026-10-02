@@ -20,6 +20,7 @@ export class RouteRegistry {
   private transformer: RouteTransformer
   private removeRouteFns: (() => void)[] = []
   private registered = false
+  private registeredRole: string | null = null
 
   constructor(router: Router) {
     this.router = router
@@ -31,10 +32,15 @@ export class RouteRegistry {
   /**
    * 注册动态路由
    */
-  register(menuList: AppRouteRecord[]): void {
-    if (this.registered) {
-      console.warn('[RouteRegistry] 路由已注册，跳过重复注册')
+  register(menuList: AppRouteRecord[], role?: string): void {
+    if (this.registered && this.registeredRole === role) {
+      console.warn('[RouteRegistry] 路由已注册且角色匹配，跳过重复注册')
       return
+    }
+
+    // 若已注册其他角色的路由，先进行清理注销
+    if (this.registered) {
+      this.unregister()
     }
 
     // 验证路由配置
@@ -56,6 +62,7 @@ export class RouteRegistry {
 
     this.removeRouteFns = removeRouteFns
     this.registered = true
+    this.registeredRole = role || null
   }
 
   /**
@@ -65,6 +72,7 @@ export class RouteRegistry {
     this.removeRouteFns.forEach((fn) => fn())
     this.removeRouteFns = []
     this.registered = false
+    this.registeredRole = null
   }
 
   /**
@@ -72,6 +80,15 @@ export class RouteRegistry {
    */
   isRegistered(): boolean {
     return this.registered
+  }
+
+  /**
+   * 检查是否已注册指定角色的路由
+   */
+  isRegisteredForRole(role?: string): boolean {
+    if (!this.registered) return false
+    if (!role) return this.registered
+    return this.registeredRole === role
   }
 
   /**

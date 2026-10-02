@@ -1,3 +1,27 @@
+// Ensure window.fetch is safely assignable in sandboxed/preview environments
+try {
+  if (typeof window !== 'undefined') {
+    const origFetch = window.fetch
+    let activeFetch = origFetch
+    try {
+      Object.defineProperty(window, 'fetch', {
+        get() {
+          return activeFetch
+        },
+        set(fn) {
+          activeFetch = fn
+        },
+        configurable: true,
+        enumerable: true
+      })
+    } catch (e1) {
+      console.debug('[Main] Fetch property override skipped:', e1)
+    }
+  }
+} catch (e2) {
+  console.debug('[Main] Fetch protection init skipped:', e2)
+}
+
 import App from './App.vue'
 import { createApp } from 'vue'
 import { initStore } from './store'                 // Store

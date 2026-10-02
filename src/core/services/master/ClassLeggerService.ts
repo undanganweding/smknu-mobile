@@ -62,17 +62,15 @@ export interface SchoolLeggerStatistics {
 
 export class ClassLeggerService {
   /**
-   * Get Legger Data for a specific class (by classId or classKey)
+   * Helper to build a ClassLeggerSummary in-memory given pre-fetched data
    */
-  public async getClassLegger(classIdentifier: string): Promise<ClassLeggerSummary | null> {
-    const allClasses = await repositories.classes.findAll()
-    const allTeachers = await repositories.teachers.findAll()
-    const allMajors = await repositories.majors.findAll()
-
-    const teacherMap = new Map(allTeachers.map((t) => [t.id, t.name]))
-    const majorMap = new Map(allMajors.map((m) => [m.id, m]))
-
-    // Find class entity
+  private buildSummaryFromCache(
+    classIdentifier: string,
+    allClasses: any[],
+    teacherMap: Map<string, string>,
+    majorMap: Map<string, any>,
+    studentsByClassMap: Map<string, StudentEntity[]>
+  ): ClassLeggerSummary | null {
     const targetClass = allClasses.find(
       (c) =>
         c.id === classIdentifier ||
@@ -81,9 +79,8 @@ export class ClassLeggerService {
         c.name.toUpperCase() === classIdentifier.toUpperCase()
     )
 
-    // Check if students exist in DB
     if (targetClass) {
-      const dbStudents = await repositories.students.findByClassId(targetClass.id)
+      const dbStudents = studentsByClassMap.get(targetClass.id) || []
       const major = majorMap.get(targetClass.majorId)
 
       if (dbStudents.length > 0) {
@@ -113,7 +110,6 @@ export class ClassLeggerService {
       }
     }
 
-    // Fallback to verified template definitions
     const allTemplates = [
       ...VERIFIED_GRADE_X_LEGGERS,
       ...getStandardLeggerRosterByLevel('XI'),
@@ -150,14 +146,68 @@ export class ClassLeggerService {
   }
 
   /**
-   * Get all Class Leggers for a given grade level ('X' | 'XI' | 'XII')
+   * Get Legger Data for a specific class (by classId or classKey)
+   */
+  public async getClassLegger(classIdentifier: string): Promise<ClassLeggerSummary | null> {
+    const [allClasses, allTeachers, allMajors, allStudents] = await Promise.all([
+      repositories.classes.findAll(),
+      repositories.teachers.findAll(),
+      repositories.majors.findAll(),
+      repositories.students.findAll()
+    ])
+
+    const teacherMap = new Map(allTeachers.map((t) => [t.id, t.name]))
+    const majorMap = new Map(allMajors.map((m) => [m.id, m]))
+    const studentsByClassMap = new Map<string, StudentEntity[]>()
+
+    allStudents.forEach((s) => {
+      const list = studentsByClassMap.get(s.classId) || []
+      list.push(s)
+      studentsByClassMap.set(s.classId, list)
+    })
+
+    return this.buildSummaryFromCache(
+      classIdentifier,
+      allClasses,
+      teacherMap,
+      majorMap,
+      studentsByClassMap
+    )
+  }
+
+  /**
+   * Get all Class Leggers for a given grade level ('X' | 'XI' | 'XII') with pre-fetched bulk queries
    */
   public async getLeggersByLevel(level: 'X' | 'XI' | 'XII'): Promise<ClassLeggerSummary[]> {
+    const [allClasses, allTeachers, allMajors, allStudents] = await Promise.all([
+      repositories.classes.findAll(),
+      repositories.teachers.findAll(),
+      repositories.majors.findAll(),
+      repositories.students.findAll()
+    ])
+
+    const teacherMap = new Map(allTeachers.map((t) => [t.id, t.name]))
+    const majorMap = new Map(allMajors.map((m) => [m.id, m]))
+    const studentsByClassMap = new Map<string, StudentEntity[]>()
+
+    allStudents.forEach((s) => {
+      const list = studentsByClassMap.get(s.classId) || []
+      list.push(s)
+      studentsByClassMap.set(s.classId, list)
+    })
+
     const templates = getStandardLeggerRosterByLevel(level)
     const results: ClassLeggerSummary[] = []
 
     for (const tpl of templates) {
-      const resolved = await this.getClassLegger(tpl.className)
+      const resolved = this.buildSummaryFromCache(
+        tpl.className,
+        allClasses,
+        teacherMap,
+        majorMap,
+        studentsByClassMap
+      )
+
       if (resolved) {
         results.push(resolved)
       } else {
@@ -189,8 +239,10 @@ export class ClassLeggerService {
     message: string
   }> {
     const now = new Date().toISOString()
-    const allClasses = await repositories.classes.findAll()
-    const allExistingStudents = await repositories.students.findAll()
+    const [allClasses, allExistingStudents] = await Promise.all([
+      repositories.classes.findAll(),
+      repositories.students.findAll()
+    ])
 
     const classMap = new Map<string, string>()
     allClasses.forEach((c) => {
@@ -200,28 +252,29 @@ export class ClassLeggerService {
 
     const existingStudentMapByNis = new Map(allExistingStudents.map((s) => [s.nis, s]))
 
-    let createdCount = 0
-    let updatedCount = 0
     const studentsToCreate: StudentEntity[] = []
+    const studentsToUpdate: Array<{ id: string; updates: Partial<StudentEntity> }> = []
 
     for (const classDef of VERIFIED_GRADE_X_LEGGERS) {
       const normalizedName = classDef.className.toUpperCase().replace(/\s+/g, '-')
       let classId = classMap.get(normalizedName) || classMap.get(classDef.className.toUpperCase())
 
       if (!classId) {
-        // Fallback or create class if not found
         classId = `cls_${classDef.className.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
       }
 
       for (const std of classDef.students) {
         const existing = existingStudentMapByNis.get(std.nis)
         if (existing) {
-          existing.name = std.name
-          existing.gender = std.gender
-          existing.classId = classId
-          existing.updatedAt = now
-          await repositories.students.update(existing.id, existing)
-          updatedCount++
+          studentsToUpdate.push({
+            id: existing.id,
+            updates: {
+              name: std.name,
+              gender: std.gender,
+              classId,
+              updatedAt: now
+            }
+          })
         } else {
           studentsToCreate.push({
             id: `std_${std.nis.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
@@ -233,14 +286,20 @@ export class ClassLeggerService {
             createdAt: now,
             updatedAt: now
           })
-          createdCount++
         }
       }
+    }
+
+    if (studentsToUpdate.length > 0) {
+      await repositories.students.updateBatch(studentsToUpdate)
     }
 
     if (studentsToCreate.length > 0) {
       await repositories.students.createBatch(studentsToCreate)
     }
+
+    const createdCount = studentsToCreate.length
+    const updatedCount = studentsToUpdate.length
 
     return {
       createdCount,

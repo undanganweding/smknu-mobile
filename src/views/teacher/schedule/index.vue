@@ -52,129 +52,162 @@
     </div>
 
     <template v-else>
-      <!-- Today's Summary & Active Session Banner -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <!-- Card 1: Sesi Hari Ini -->
-        <div class="art-card p-5">
+      <!-- Top Stat Banners Inspired by Reference Design -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <!-- Banner 1: Productive Time Today (Coral Accent) -->
+        <div
+          class="bg-gradient-to-br from-[#f97316] to-[#ea580c] text-white rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden min-h-[120px]"
+        >
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400"
-              >Jadwal Hari Ini</span
-            >
             <span
-              class="px-2 py-0.5 text-xs font-semibold rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
+              class="text-xs font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-xs"
             >
-              {{ todayDayName || 'Hari Ini' }}
+              {{ todayDayName || 'HARI INI' }}
+            </span>
+            <span
+              class="px-2.5 py-1 text-xs font-bold rounded-full bg-white text-orange-600 shadow-xs"
+            >
+              {{ dailyProductiveRate }}% Produktif
             </span>
           </div>
-          <div class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">
-            {{ scheduleData?.todaySummary.totalSessions || 0 }}
-            <span class="text-base font-normal text-gray-500">Sesi Mengajar</span>
-          </div>
-          <div class="text-xs text-gray-500 mt-1">
-            {{ formattedTodayDate }}
+
+          <div class="mt-3 flex items-baseline justify-between">
+            <div>
+              <div class="text-xs text-orange-100 font-medium">Beban Mengajar Hari Ini</div>
+              <div class="text-2xl md:text-3xl font-bold tracking-tight">
+                {{ scheduleData?.todaySummary.totalHours || 0 }}
+                <span class="text-lg font-medium text-orange-100">JP</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="text-xs text-orange-100 font-medium">Durasi Tatap Muka</div>
+              <div class="text-xl font-mono font-bold"
+                >{{ (scheduleData?.todaySummary.totalHours || 0) * 45 }}m</div
+              >
+            </div>
           </div>
         </div>
 
-        <!-- Card 2: Kelas Diampu Hari Ini -->
-        <div class="art-card p-5">
+        <!-- Banner 2: Weekly Productive Load (Purple Accent) -->
+        <div
+          class="bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white rounded-2xl p-5 shadow-sm flex flex-col justify-between relative overflow-hidden min-h-[120px]"
+        >
           <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400"
-              >Rombongan Belajar</span
+            <span
+              class="text-xs font-bold uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full backdrop-blur-xs"
             >
-            <i class="ri-community-line text-blue-500"></i>
-          </div>
-          <div class="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-2">
-            {{ scheduleData?.todaySummary.totalClasses || 0 }}
-            <span class="text-base font-normal text-gray-500">Kelas</span>
-          </div>
-          <div class="text-xs text-gray-500 mt-1"> Total kelas tatap muka hari ini </div>
-        </div>
-
-        <!-- Card 3: Total Jam Pelajaran (JP) Hari Ini -->
-        <div class="art-card p-5">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400"
-              >Beban Mengajar Hari Ini</span
+              TOTAL MINGGUAN
+            </span>
+            <span
+              class="px-2.5 py-1 text-xs font-bold rounded-full bg-white text-purple-700 shadow-xs"
             >
-            <i class="ri-time-line text-amber-500"></i>
+              91% Alokasi
+            </span>
           </div>
-          <div class="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-2">
-            {{ scheduleData?.todaySummary.totalHours || 0 }}
-            <span class="text-base font-normal text-gray-500">Jam Pelajaran (JP)</span>
-          </div>
-          <div class="text-xs text-gray-500 mt-1"> Alokasi block teaching hari ini </div>
-        </div>
-      </div>
 
-      <!-- Current / Next Session Status Banner -->
-      <div
-        v-if="scheduleData?.todaySummary.currentSession"
-        class="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-300 dark:border-emerald-800 rounded-xl p-4 flex items-center justify-between gap-4 cursor-pointer hover:border-emerald-500 transition-colors"
-        @click="openSessionDetail(scheduleData.todaySummary.currentSession)"
-      >
-        <div class="flex items-center gap-3">
-          <div
-            class="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center flex-shrink-0"
-          >
-            <i class="ri-broadcast-line text-xl animate-pulse"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 text-xs font-bold rounded bg-emerald-600 text-white">
-                SEDANG BERLANGSUNG
-              </span>
-              <span class="text-xs text-gray-600 dark:text-gray-300">
-                Jam ke-{{ scheduleData.todaySummary.currentSession.periodStart }} s.d
-                {{ scheduleData.todaySummary.currentSession.periodEnd }} ({{
-                  scheduleData.todaySummary.currentSession.timeStart
-                }}
-                – {{ scheduleData.todaySummary.currentSession.timeEnd }})
-              </span>
+          <div class="mt-3 flex items-baseline justify-between">
+            <div>
+              <div class="text-xs text-purple-100 font-medium">Total Beban Mengajar</div>
+              <div class="text-2xl md:text-3xl font-bold tracking-tight">
+                {{ totalWeeklyHours }}
+                <span class="text-lg font-medium text-purple-100">JP / Mgg</span>
+              </div>
             </div>
-            <div class="font-bold text-gray-900 dark:text-gray-100 mt-0.5">
-              {{ scheduleData.todaySummary.currentSession.subjectName }} &bull;
-              {{ scheduleData.todaySummary.currentSession.className }} &bull;
-              {{ scheduleData.todaySummary.currentSession.roomName }}
+            <div class="text-right">
+              <div class="text-xs text-purple-100 font-medium">Jumlah Sesi</div>
+              <div class="text-xl font-mono font-bold"
+                >{{ scheduleData?.schedules.length || 0 }} Sesi</div
+              >
             </div>
           </div>
         </div>
-        <ElButton size="small" type="success" plain>
-          Lihat Detail <i class="ri-arrow-right-line ml-1"></i>
-        </ElButton>
-      </div>
 
-      <div
-        v-else-if="scheduleData?.todaySummary.nextSession"
-        class="bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-xl p-4 flex items-center justify-between gap-4 cursor-pointer hover:border-blue-400 transition-colors"
-        @click="openSessionDetail(scheduleData.todaySummary.nextSession)"
-      >
-        <div class="flex items-center gap-3">
-          <div
-            class="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center flex-shrink-0"
-          >
-            <i class="ri-timer-line text-xl"></i>
+        <!-- Banner 3: Next Event Widget -->
+        <div
+          class="art-card p-5 flex flex-col justify-between border border-slate-200/80 dark:border-slate-800"
+        >
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400"
+            >
+              Kelas / Sesi Saat Ini & Selanjutnya
+            </span>
+            <span
+              v-if="scheduleData?.todaySummary.currentSession"
+              class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-600 text-white animate-pulse"
+            >
+              SEDANG BERLANGSUNG
+            </span>
+            <span
+              v-else-if="scheduleData?.todaySummary.nextSession"
+              class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-600 text-white"
+            >
+              AKAN DATANG
+            </span>
           </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 text-xs font-bold rounded bg-blue-600 text-white">
-                KELAS BERIKUTNYA HARI INI
-              </span>
-              <span class="text-xs text-gray-600 dark:text-gray-300">
-                Mulai pukul {{ scheduleData.todaySummary.nextSession.timeStart }} WIB (Jam ke-{{
-                  scheduleData.todaySummary.nextSession.periodStart
-                }}–{{ scheduleData.todaySummary.nextSession.periodEnd }})
-              </span>
+
+          <div v-if="scheduleData?.todaySummary.currentSession" class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 text-xl font-bold"
+            >
+              <i class="ri-broadcast-line animate-pulse"></i>
             </div>
-            <div class="font-bold text-gray-900 dark:text-gray-100 mt-0.5">
-              {{ scheduleData.todaySummary.nextSession.subjectName }} &bull;
-              {{ scheduleData.todaySummary.nextSession.className }} &bull;
-              {{ scheduleData.todaySummary.nextSession.roomName }}
+            <div class="truncate flex-1">
+              <div class="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">
+                {{ scheduleData.todaySummary.currentSession.subjectName }}
+              </div>
+              <div
+                class="text-xs text-slate-500 flex items-center justify-between gap-1 mt-0.5 font-mono"
+              >
+                <span
+                  >{{ scheduleData.todaySummary.currentSession.className }} &bull;
+                  {{ scheduleData.todaySummary.currentSession.timeStart }}-{{
+                    scheduleData.todaySummary.currentSession.timeEnd
+                  }}</span
+                >
+                <span class="font-bold text-emerald-600 dark:text-emerald-400">
+                  Sisa
+                  {{
+                    getSessionLiveTimer(scheduleData.todaySummary.currentSession)
+                      .remainingFormatted || ''
+                  }}
+                </span>
+              </div>
             </div>
+          </div>
+
+          <div v-else-if="scheduleData?.todaySummary.nextSession" class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 text-xl font-bold"
+            >
+              <i class="ri-calendar-event-line"></i>
+            </div>
+            <div class="truncate flex-1">
+              <div class="font-bold text-slate-900 dark:text-slate-100 text-sm truncate">
+                {{ scheduleData.todaySummary.nextSession.subjectName }}
+              </div>
+              <div
+                class="text-xs text-slate-500 flex items-center justify-between gap-1 mt-0.5 font-mono"
+              >
+                <span
+                  >{{ scheduleData.todaySummary.nextSession.className }} &bull;
+                  {{ scheduleData.todaySummary.nextSession.timeStart }} WIB</span
+                >
+                <span
+                  v-if="getSessionLiveTimer(scheduleData.todaySummary.nextSession).waitFormatted"
+                  class="font-bold text-blue-600 dark:text-blue-400"
+                >
+                  Mulai
+                  {{ getSessionLiveTimer(scheduleData.todaySummary.nextSession).waitFormatted }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="text-xs text-slate-400 italic">
+            Seluruh sesi tatap muka hari ini telah selesai.
           </div>
         </div>
-        <ElButton size="small" type="primary" plain>
-          Lihat Detail <i class="ri-arrow-right-line ml-1"></i>
-        </ElButton>
       </div>
 
       <!-- Main Content Container with Tabs -->
@@ -408,7 +441,7 @@
                 </div>
 
                 <div class="space-y-1">
-                  <div class="flex items-center gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
                     <span class="font-mono text-xs font-bold text-gray-600 dark:text-gray-300">
                       {{ item.timeStart }} – {{ item.timeEnd }} WIB
                     </span>
@@ -419,15 +452,21 @@
                     </span>
                     <span
                       v-if="item.timingStatus === 'ONGOING'"
-                      class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-600 text-white"
+                      class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-600 text-white animate-pulse flex items-center gap-1 font-mono"
                     >
-                      SEDANG BERLANGSUNG
+                      <i class="ri-timer-line"></i> SEDANG BERLANGSUNG
+                      <template v-if="getSessionLiveTimer(item).status === 'ONGOING'">
+                        (Sisa {{ getSessionLiveTimer(item).remainingFormatted }})
+                      </template>
                     </span>
                     <span
                       v-else-if="item.timingStatus === 'UPCOMING'"
-                      class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                      class="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-mono"
                     >
                       SESI BERIKUTNYA
+                      <template v-if="getSessionLiveTimer(item).status === 'UPCOMING'">
+                        (Mulai {{ getSessionLiveTimer(item).waitFormatted }})
+                      </template>
                     </span>
                   </div>
 
@@ -723,7 +762,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, onMounted, computed } from 'vue'
+  import { ref, onMounted, onUnmounted, computed } from 'vue'
   import { useRouter } from 'vue-router'
   import { ElButton, ElDialog } from 'element-plus'
   import { authService } from '@/core/services/auth'
@@ -751,6 +790,10 @@
   const detailModalVisible = ref(false)
   const selectedSession = ref<TeacherResolvedScheduleItem | null>(null)
 
+  // Ticking real-time clock for live timers
+  const currentTime = ref(new Date())
+  let clockInterval: any = null
+
   const ALL_DAYS: DayOfWeek[] = ['SENIN', 'SELASA', 'RABU', 'KAMIS', 'JUMAT', 'SABTU']
 
   const PERIOD_ROWS = [
@@ -770,14 +813,63 @@
     return getTodayDayOfWeek()
   })
 
-  const formattedTodayDate = computed(() => {
-    return new Intl.DateTimeFormat('id-ID', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    }).format(new Date())
+  const totalWeeklyHours = computed(() => {
+    if (!scheduleData.value) return 0
+    return scheduleData.value.schedules.reduce((acc, curr) => acc + curr.totalPeriods, 0)
   })
+
+  const dailyProductiveRate = computed(() => {
+    const hours = scheduleData.value?.todaySummary.totalHours || 0
+    if (hours === 0) return 0
+    return Math.min(100, Math.round((hours / 8) * 100))
+  })
+
+  const parseTimeToMinutes = (timeStr: string): number => {
+    if (!timeStr) return 0
+    const [h, m] = timeStr.split(':').map(Number)
+    return (h || 0) * 60 + (m || 0)
+  }
+
+  const getSessionLiveTimer = (item: TeacherResolvedScheduleItem) => {
+    const now = currentTime.value
+    const curSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()
+
+    const startMin = parseTimeToMinutes(item.timeStart)
+    const endMin = parseTimeToMinutes(item.timeEnd)
+    const startSec = startMin * 60
+    const endSec = endMin * 60
+
+    const formatSec = (seconds: number) => {
+      const h = Math.floor(seconds / 3600)
+      const m = Math.floor((seconds % 3600) / 60)
+      const s = Math.floor(seconds % 60)
+      const pad = (n: number) => String(n).padStart(2, '0')
+      return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+    }
+
+    if (curSec >= startSec && curSec < endSec) {
+      const totalSec = endSec - startSec
+      const elapsedSec = curSec - startSec
+      const remainingSec = endSec - curSec
+
+      return {
+        status: 'ONGOING' as const,
+        elapsedFormatted: formatSec(elapsedSec),
+        remainingFormatted: formatSec(remainingSec),
+        percent: Math.min(100, Math.max(0, Math.round((elapsedSec / totalSec) * 100)))
+      }
+    } else if (startSec > curSec) {
+      const waitSec = startSec - curSec
+      return {
+        status: 'UPCOMING' as const,
+        waitFormatted: formatSec(waitSec)
+      }
+    } else {
+      return {
+        status: 'COMPLETED' as const
+      }
+    }
+  }
 
   const dayFilterOptions = computed(() => {
     const totalCount = scheduleData.value?.schedules.length || 0
@@ -837,7 +929,6 @@
   const getSchedulesForGridCell = (day: DayOfWeek, period: number) => {
     if (!scheduleData.value) return []
     const daySchedules = scheduleData.value.weeklySchedules[day] || []
-    // Only return the schedule if this period is the start period of the block session (so it doesn't render duplicate chips across the block)
     return daySchedules.filter((s) => s.periodStart === period)
   }
 
@@ -868,5 +959,12 @@
 
   onMounted(() => {
     loadScheduleData()
+    clockInterval = setInterval(() => {
+      currentTime.value = new Date()
+    }, 1000)
+  })
+
+  onUnmounted(() => {
+    if (clockInterval) clearInterval(clockInterval)
   })
 </script>

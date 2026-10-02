@@ -6,6 +6,7 @@
 import { repositories } from '../../repositories'
 import type { StudentEntity, StudentStatus, GenderType } from '../../types'
 import { masterDataIntegrityService, MasterDataIntegrityError } from './MasterDataIntegrityService'
+import { ensureAllClassStudentsExist } from '../../db/seedData'
 
 export interface CreateStudentDTO {
   nis: string
@@ -24,7 +25,11 @@ export type UpdateStudentDTO = Partial<CreateStudentDTO>
 
 export class StudentService {
   async getAllStudents(status?: StudentStatus): Promise<StudentEntity[]> {
-    const list = await repositories.students.findAll()
+    let list = await repositories.students.findAll()
+    if (list.length === 0) {
+      await ensureAllClassStudentsExist()
+      list = await repositories.students.findAll()
+    }
     if (status) {
       return list.filter((s) => s.status === status)
     }
@@ -36,7 +41,11 @@ export class StudentService {
   }
 
   async getStudentsByClass(classId: string, status?: StudentStatus): Promise<StudentEntity[]> {
-    const list = await repositories.students.findByClassId(classId)
+    let list = await repositories.students.findByClassId(classId)
+    if (list.length === 0) {
+      await ensureAllClassStudentsExist()
+      list = await repositories.students.findByClassId(classId)
+    }
     if (status) {
       return list.filter((s) => s.status === status)
     }

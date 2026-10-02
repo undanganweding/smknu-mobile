@@ -11,24 +11,11 @@ export const router = createRouter({
   routes: staticRoutes // 静态路由
 })
 
-// 监听动态导入模块错误并优雅恢复
+// Handle routing errors gracefully without forcing window reloads
 router.onError((error, to) => {
-  const errorMessage = error?.message || ''
-  if (
-    errorMessage.includes('Failed to fetch dynamically imported module') ||
-    errorMessage.includes('Importing a module script failed') ||
-    errorMessage.includes('error loading dynamically imported module')
-  ) {
-    console.warn('[Router] Dynamic import failed, recovering gracefully...', error)
-    if (to?.fullPath) {
-      const targetHash = '#' + to.fullPath
-      if (window.location.hash !== targetHash) {
-        window.location.hash = targetHash
-      }
-      window.location.reload()
-    } else {
-      window.location.reload()
-    }
+  console.error('[Router Error]', error)
+  if (to?.fullPath) {
+    router.push({ name: 'Exception500' }).catch(() => {})
   }
 })
 

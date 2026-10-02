@@ -111,6 +111,17 @@ export const teacherRoutes: AppRouteRecord = {
       }
     },
     {
+      path: 'announcements',
+      name: 'TeacherAnnouncements',
+      component: '/teacher/announcements',
+      meta: {
+        title: 'Pengumuman & Notifikasi',
+        icon: 'ri:notification-3-line',
+        roles: ['GURU'],
+        keepAlive: true
+      }
+    },
+    {
       path: 'profile',
       name: 'TeacherProfile',
       component: '/teacher/profile',

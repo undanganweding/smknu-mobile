@@ -6,7 +6,7 @@
  */
 
 export const DB_NAME = 'guru_offline_db'
-export const DB_VERSION = 3
+export const DB_VERSION = 4
 
 export interface StoreIndexConfig {
   name: string
@@ -106,7 +106,7 @@ export const STORE_SCHEMAS: StoreSchemaConfig[] = [
     name: 'students',
     keyPath: 'id',
     indexes: [
-      { name: 'nis', keyPath: 'nis', unique: true },
+      { name: 'nis', keyPath: 'nis', unique: false },
       { name: 'nisn', keyPath: 'nisn', unique: false },
       { name: 'classId', keyPath: 'classId', unique: false },
       { name: 'gender', keyPath: 'gender', unique: false },

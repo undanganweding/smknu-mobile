@@ -134,6 +134,15 @@
         <div class="flex justify-between items-center w-full">
           <span class="text-[11px] text-slate-400"> Proteksi tab close & reload aktif </span>
           <div class="flex gap-2">
+            <el-button
+              v-if="pendingCount > 0"
+              type="danger"
+              plain
+              size="default"
+              @click="clearPendingQueue"
+            >
+              Bersihkan Antrean
+            </el-button>
             <el-button @click="dialogVisible = false">Tutup</el-button>
             <el-button
               type="primary"
@@ -266,6 +275,17 @@
       return lastSyncedAt.value
     }
   })
+
+  async function clearPendingQueue() {
+    try {
+      await pendingMutationQueue.clear()
+      await connectivityManager.refreshPendingCount()
+      await loadPendingDetails()
+      ElMessage.success('Antrean mutasi offline berhasil dibersihkan.')
+    } catch (err: any) {
+      ElMessage.error('Gagal membersihkan antrean: ' + err.message)
+    }
+  }
 
   async function triggerManualSync() {
     if (isSyncing.value) return

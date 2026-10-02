@@ -52,7 +52,7 @@ export const useUserStore = defineStore(
   'userStore',
   () => {
     // 语言设置
-    const language = ref(LanguageEnum.ZH)
+    const language = ref(LanguageEnum.ID)
     // 登录状态
     const isLogin = ref(false)
     // 锁屏状态
@@ -141,7 +141,7 @@ export const useUserStore = defineStore(
      * 清空所有用户相关状态并跳转到登录页
      * 如果是同一账号重新登录，保留工作台标签页
      */
-    const logOut = () => {
+    const logOut = async () => {
       // 保存当前用户 ID，用于下次登录时判断是否为同一用户
       const currentUserId = info.value.userId
       if (currentUserId) {
@@ -161,21 +161,20 @@ export const useUserStore = defineStore(
       // 清空刷新令牌
       refreshToken.value = ''
       // 清空 offline authService session
-      authService.logout()
-      // 注意：不清空工作台标签页，等下次登录时根据用户判断
+      await authService.logout()
       // 移除iframe路由缓存
       sessionStorage.removeItem('iframeRoutes')
       // 清空主页路径
       useMenuStore().setHomePath('')
-      // 重置路由状态
-      resetRouterState(500)
-      // 跳转到登录页，携带当前路由作为 redirect 参数
-      const currentRoute = router.currentRoute.value
-      const redirect = currentRoute.path !== '/login' ? currentRoute.fullPath : undefined
-      router.push({
-        name: 'Login',
-        query: redirect ? { redirect } : undefined
-      })
+      // 重置路由状态（立即执行）
+      resetRouterState(0)
+
+      // 跳转到登录页
+      await router
+        .push({
+          name: 'Login'
+        })
+        .catch(() => {})
     }
 
     /**

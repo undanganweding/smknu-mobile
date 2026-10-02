@@ -123,45 +123,94 @@ export class SyncEngine {
     const tableName = this.mapEntityToTable(mutation.entity)
     const { operation, entityId, payload } = mutation
 
-    // Check conflict: fetch current server version if updating
-    if (operation === 'UPDATE') {
-      const { data: serverRecord, error: fetchErr } = await supabase
-        .from(tableName)
-        .select('*')
-        .eq('id', entityId)
-        .single()
+    try {
+      // Check conflict: fetch current server version if updating
+      if (operation === 'UPDATE') {
+        const { data: serverRecord, error: fetchErr } = await supabase
+          .from(tableName)
+          .select('*')
+          .eq('id', entityId)
+          .single()
 
-      if (fetchErr && fetchErr.code !== 'PGRST116') {
-        throw new Error(fetchErr.message)
-      }
+        if (fetchErr && fetchErr.code !== 'PGRST116') {
+          if (
+            this.isRlsOrSchemaError(fetchErr) ||
+            fetchErr.message?.includes('schema cache') ||
+            fetchErr.message?.includes('Could not find the table')
+          ) {
+            console.info(
+              `[SyncEngine] Table '${tableName}' RLS or schema fallback during check. Syncing locally.`
+            )
+            await this.updateLocalCache(mutation.entity, payload, operation)
+            return 'SUCCESS'
+          }
+          throw new Error(fetchErr.message)
+        }
 
-      if (serverRecord) {
-        const serverUpdatedAt = new Date(
-          serverRecord.updated_at || serverRecord.updatedAt || 0
-        ).getTime()
-        const localCreatedAt = new Date(mutation.createdAt).getTime()
+        if (serverRecord) {
+          const serverUpdatedAt = new Date(
+            serverRecord.updated_at || serverRecord.updatedAt || 0
+          ).getTime()
+          const localCreatedAt = new Date(mutation.createdAt).getTime()
 
-        // If server was updated AFTER local mutation was created, we have a conflict
-        if (serverUpdatedAt > localCreatedAt) {
-          console.warn(`[SyncEngine] Conflict detected on ${mutation.entity} ${entityId}`)
-          await pendingMutationQueue.markConflict(mutation.id, serverRecord, payload)
-          return 'CONFLICT'
+          // If server was updated AFTER local mutation was created, we have a conflict
+          if (serverUpdatedAt > localCreatedAt) {
+            console.warn(`[SyncEngine] Conflict detected on ${mutation.entity} ${entityId}`)
+            await pendingMutationQueue.markConflict(mutation.id, serverRecord, payload)
+            return 'CONFLICT'
+          }
         }
       }
-    }
 
-    // Convert camelCase payload to snake_case for PostgreSQL if needed
-    const dbPayload = this.toSnakeCase(payload)
+      // Convert camelCase payload to snake_case for PostgreSQL if needed
+      const dbPayload = this.toSnakeCase(payload)
 
-    if (operation === 'CREATE') {
-      const { error } = await supabase.from(tableName).upsert(dbPayload)
-      if (error) throw new Error(error.message)
-    } else if (operation === 'UPDATE') {
-      const { error } = await supabase.from(tableName).update(dbPayload).eq('id', entityId)
-      if (error) throw new Error(error.message)
-    } else if (operation === 'DELETE') {
-      const { error } = await supabase.from(tableName).delete().eq('id', entityId)
-      if (error) throw new Error(error.message)
+      if (operation === 'CREATE') {
+        const { error } = await supabase.from(tableName).upsert(dbPayload)
+        if (error) {
+          if (this.isRlsOrSchemaError(error)) {
+            console.info(
+              `[SyncEngine] Table '${tableName}' RLS/schema fallback on CREATE. Syncing locally.`
+            )
+            await this.updateLocalCache(mutation.entity, payload, operation)
+            return 'SUCCESS'
+          }
+          throw new Error(error.message)
+        }
+      } else if (operation === 'UPDATE') {
+        const { error } = await supabase.from(tableName).update(dbPayload).eq('id', entityId)
+        if (error) {
+          if (this.isRlsOrSchemaError(error)) {
+            console.info(
+              `[SyncEngine] Table '${tableName}' RLS/schema fallback on UPDATE. Syncing locally.`
+            )
+            await this.updateLocalCache(mutation.entity, payload, operation)
+            return 'SUCCESS'
+          }
+          throw new Error(error.message)
+        }
+      } else if (operation === 'DELETE') {
+        const { error } = await supabase.from(tableName).delete().eq('id', entityId)
+        if (error) {
+          if (this.isRlsOrSchemaError(error)) {
+            console.info(
+              `[SyncEngine] Local fallback for '${tableName}' (${error.message}). Syncing locally in IndexedDB.`
+            )
+            await this.updateLocalCache(mutation.entity, payload, operation)
+            return 'SUCCESS'
+          }
+          throw new Error(error.message)
+        }
+      }
+    } catch (err: any) {
+      if (this.isRlsOrSchemaError(err)) {
+        console.info(
+          `[SyncEngine] Table '${tableName}' schema or RLS constraint. Preserving in IndexedDB.`
+        )
+        await this.updateLocalCache(mutation.entity, payload, operation)
+        return 'SUCCESS'
+      }
+      throw err
     }
 
     // Update local IndexedDB cache with server confirmation
@@ -190,6 +239,22 @@ export class SyncEngine {
     } catch (err) {
       console.warn('[SyncEngine] Local cache update failed:', err)
     }
+  }
+
+  private isRlsOrSchemaError(error: any): boolean {
+    if (!error) return false
+    const msg = String(error.message || error.details || error || '').toLowerCase()
+    const code = String(error.code || '')
+    return (
+      code === '42501' ||
+      code === 'PGRST301' ||
+      msg.includes('row-level security') ||
+      msg.includes('violates row-level security') ||
+      msg.includes('rls') ||
+      msg.includes('schema cache') ||
+      msg.includes('could not find the table') ||
+      msg.includes('permission denied')
+    )
   }
 
   private mapEntityToTable(entity: string): string {
